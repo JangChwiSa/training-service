@@ -1,5 +1,6 @@
 package com.jangchwisa.trainingservice.training.social.repository;
 
+import com.jangchwisa.trainingservice.training.social.dto.SocialDialogLogRequest;
 import com.jangchwisa.trainingservice.training.social.dto.SocialDialogLogResponse;
 import com.jangchwisa.trainingservice.training.social.dto.SocialFeedbackResponse;
 import com.jangchwisa.trainingservice.training.social.dto.SocialScenarioDetailResponse;
@@ -67,6 +68,38 @@ public class JdbcSocialTrainingRepository implements SocialTrainingRepository {
                 """;
         Long count = jdbcTemplate.queryForObject(sql, Long.class, scenarioId, jobType.name());
         return count != null && count > 0;
+    }
+
+    @Override
+    public Optional<SocialScenarioSummaryRow> findScenarioSummaryBySessionId(long sessionId) {
+        String sql = """
+                SELECT scenario.scenario_id, scenario.title
+                FROM training_sessions session
+                JOIN social_scenarios scenario ON scenario.scenario_id = session.scenario_id
+                WHERE session.session_id = ?
+                """;
+        List<SocialScenarioSummaryRow> rows = jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SocialScenarioSummaryRow(
+                resultSet.getLong("scenario_id"),
+                resultSet.getString("title")
+        ), sessionId);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public void saveDialogLogs(long sessionId, List<SocialDialogLogRequest> dialogLogs) {
+        String sql = """
+                INSERT INTO social_dialog_logs (session_id, turn_no, speaker, content, created_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP(6))
+                """;
+        for (SocialDialogLogRequest dialogLog : dialogLogs) {
+            jdbcTemplate.update(
+                    sql,
+                    sessionId,
+                    dialogLog.turnNo(),
+                    dialogLog.speaker().name(),
+                    dialogLog.content()
+            );
+        }
     }
 
     @Override

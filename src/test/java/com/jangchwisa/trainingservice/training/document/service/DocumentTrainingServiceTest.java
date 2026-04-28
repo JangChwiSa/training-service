@@ -12,9 +12,24 @@ import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResp
 import com.jangchwisa.trainingservice.training.document.dto.DocumentSessionDetailResponse;
 import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionResponse;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
+import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository;
+import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
+import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
+import com.jangchwisa.trainingservice.event.outbox.OutboxEvent;
+import com.jangchwisa.trainingservice.event.outbox.OutboxEventRepository;
+import com.jangchwisa.trainingservice.training.completion.TrainingCompletionService;
+import com.jangchwisa.trainingservice.training.feedback.entity.TrainingFeedback;
+import com.jangchwisa.trainingservice.training.feedback.repository.TrainingFeedbackRepository;
+import com.jangchwisa.trainingservice.training.progress.entity.TrainingProgressCompletion;
+import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
+import com.jangchwisa.trainingservice.training.score.entity.TrainingScore;
+import com.jangchwisa.trainingservice.training.score.repository.TrainingScoreRepository;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
+import com.jangchwisa.trainingservice.training.session.entity.TrainingSessionStatus;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
+import com.jangchwisa.trainingservice.training.summary.entity.TrainingSessionSummary;
+import com.jangchwisa.trainingservice.training.summary.repository.TrainingSessionSummaryRepository;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionOwnershipRepository;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionRepository;
 import com.jangchwisa.trainingservice.training.session.service.SessionOwnershipValidator;
@@ -119,6 +134,57 @@ class DocumentTrainingServiceTest {
                 });
     }
 
+    @Test
+    void submitsAnswersAndCompletesDocumentSession() {
+        TrainingSession session = TrainingSession.start(
+                1L,
+                TrainingType.DOCUMENT,
+                null,
+                null,
+                java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(10L);
+        sessionRepository.sessions.put(10L, session);
+        ownershipRepository.save(10L, 1L);
+        documentRepository.questionAnswers = List.of(new DocumentQuestionAnswerRow(
+                1L,
+                "근무 시간 변경 안내",
+                "변경된 근무 시작 시간은 언제인가요?",
+                "오전 9시",
+                "문서에 오전 9시로 명시되어 있습니다."
+        ));
+        CapturingTrainingScoreRepository scoreRepository = new CapturingTrainingScoreRepository();
+        CapturingOutboxEventRepository outboxEventRepository = new CapturingOutboxEventRepository();
+        DocumentTrainingService completionEnabledService = new DocumentTrainingService(
+                documentRepository,
+                trainingSessionService,
+                new SessionOwnershipValidator(ownershipRepository),
+                new TrainingCompletionService(
+                        sessionRepository,
+                        scoreRepository,
+                        new NoOpTrainingFeedbackRepository(),
+                        new NoOpTrainingProgressRepository(),
+                        new NoOpTrainingSessionSummaryRepository(),
+                        outboxEventRepository,
+                        Clock.fixed(Instant.parse("2026-04-28T01:30:00Z"), ZoneId.of("Asia/Seoul"))
+                )
+        );
+
+        SubmitDocumentAnswersResponse response = completionEnabledService.submitAnswers(
+                new CurrentUser(1L),
+                10L,
+                new SubmitDocumentAnswersRequest(List.of(new DocumentAnswerRequest(1L, "오전 9시")))
+        );
+
+        assertThat(response.completed()).isTrue();
+        assertThat(response.score()).isEqualTo(100);
+        assertThat(response.correctCount()).isEqualTo(1);
+        assertThat(response.totalCount()).isEqualTo(1);
+        assertThat(documentRepository.savedAnswers).hasSize(1);
+        assertThat(scoreRepository.saved.scoreType()).isEqualTo("ACCURACY_RATE");
+        assertThat(sessionRepository.sessions.get(10L).status()).isEqualTo(TrainingSessionStatus.COMPLETED);
+        assertThat(outboxEventRepository.saved.eventType()).isEqualTo("TrainingCompleted");
+    }
+
     private static DocumentQuestionResponse question(long questionId) {
         return new DocumentQuestionResponse(
                 questionId,
@@ -134,10 +200,22 @@ class DocumentTrainingServiceTest {
         List<DocumentQuestionResponse> questions = List.of();
         Optional<DocumentScoreRow> score = Optional.empty();
         List<DocumentAnswerDetailResponse> answerLogs = List.of();
+        List<DocumentQuestionAnswerRow> questionAnswers = List.of();
+        List<ScoredDocumentAnswer> savedAnswers = List.of();
 
         @Override
         public List<DocumentQuestionResponse> findActiveQuestions() {
             return questions;
+        }
+
+        @Override
+        public List<DocumentQuestionAnswerRow> findQuestionAnswers(List<Long> questionIds) {
+            return questionAnswers;
+        }
+
+        @Override
+        public void saveAnswerLogs(long sessionId, List<ScoredDocumentAnswer> answers) {
+            savedAnswers = answers;
         }
 
         @Override
@@ -148,6 +226,87 @@ class DocumentTrainingServiceTest {
         @Override
         public List<DocumentAnswerDetailResponse> findAnswerLogs(long sessionId) {
             return answerLogs;
+        }
+    }
+
+    private static class CapturingTrainingScoreRepository implements TrainingScoreRepository {
+
+        private TrainingScore saved;
+
+        @Override
+        public void save(TrainingScore trainingScore) {
+            this.saved = trainingScore;
+        }
+    }
+
+    private static class CapturingOutboxEventRepository implements OutboxEventRepository {
+
+        private OutboxEvent saved;
+
+        @Override
+        public void save(OutboxEvent outboxEvent) {
+            this.saved = outboxEvent;
+        }
+    }
+
+    private static class NoOpTrainingFeedbackRepository implements TrainingFeedbackRepository {
+
+        @Override
+        public void save(TrainingFeedback trainingFeedback) {
+        }
+    }
+
+    private static class NoOpTrainingProgressRepository implements TrainingProgressRepository {
+
+        @Override
+        public void applyCompletion(TrainingProgressCompletion completion) {
+        }
+
+        @Override
+        public Optional<com.jangchwisa.trainingservice.training.progress.dto.SocialProgressResponse> findSocialProgress(long userId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<com.jangchwisa.trainingservice.training.progress.dto.SafetyProgressResponse> findSafetyProgress(long userId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse> findDocumentProgress(long userId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<com.jangchwisa.trainingservice.training.progress.dto.FocusProgressResponse> findFocusProgress(long userId) {
+            return Optional.empty();
+        }
+    }
+
+    private static class NoOpTrainingSessionSummaryRepository implements TrainingSessionSummaryRepository {
+
+        @Override
+        public void save(TrainingSessionSummary summary) {
+        }
+
+        @Override
+        public long countByUserIdAndTrainingType(
+                long userId,
+                TrainingType trainingType,
+                com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory category
+        ) {
+            return 0;
+        }
+
+        @Override
+        public List<com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListItemResponse> findByUserIdAndTrainingType(
+                long userId,
+                TrainingType trainingType,
+                com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory category,
+                int page,
+                int size
+        ) {
+            return List.of();
         }
     }
 

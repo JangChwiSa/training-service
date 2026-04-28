@@ -24,8 +24,22 @@ public interface SafetyTrainingRepository {
 
     void saveActionLog(long sessionId, long sceneId, long choiceId, boolean correct);
 
+    default Optional<SafetyScenarioSummaryRow> findScenarioSummaryBySessionId(long sessionId) {
+        throw new UnsupportedOperationException("findScenarioSummaryBySessionId is not implemented.");
+    }
+
+    default SafetyActionSummaryRow summarizeActions(long sessionId) {
+        throw new UnsupportedOperationException("summarizeActions is not implemented.");
+    }
+
     List<SafetyActionLogResponse> findActionLogs(long sessionId);
 
     record SafetyChoiceRow(long choiceId, long sceneId, Long nextSceneId, boolean correct) {
+    }
+
+    record SafetyScenarioSummaryRow(long scenarioId, SafetyCategory category, String title) {
+    }
+
+    record SafetyActionSummaryRow(int correctCount, int totalCount) {
     }
 }

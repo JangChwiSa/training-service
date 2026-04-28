@@ -5,6 +5,8 @@ import com.jangchwisa.trainingservice.common.exception.TrainingServiceException;
 import com.jangchwisa.trainingservice.common.response.ApiResponse;
 import com.jangchwisa.trainingservice.common.security.AuthenticatedUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
+import com.jangchwisa.trainingservice.training.social.dto.CompleteSocialSessionRequest;
+import com.jangchwisa.trainingservice.training.social.dto.CompleteSocialSessionResponse;
 import com.jangchwisa.trainingservice.training.social.dto.SelectSocialJobTypeRequest;
 import com.jangchwisa.trainingservice.training.social.dto.SelectSocialJobTypeResponse;
 import com.jangchwisa.trainingservice.training.social.dto.SocialScenarioDetailResponse;
@@ -74,6 +76,15 @@ public class SocialTrainingController {
             @PathVariable long sessionId
     ) {
         return ApiResponse.success(socialTrainingService.getSessionDetail(currentUser, sessionId));
+    }
+
+    @PostMapping("/api/trainings/social/sessions/{sessionId}/complete")
+    public ApiResponse<CompleteSocialSessionResponse> completeSession(
+            @AuthenticatedUser CurrentUser currentUser,
+            @PathVariable long sessionId,
+            @Valid @RequestBody CompleteSocialSessionRequest request
+    ) {
+        return ApiResponse.success(socialTrainingService.completeSession(currentUser, sessionId, request));
     }
 
     private SocialJobType parseJobType(String jobType) {

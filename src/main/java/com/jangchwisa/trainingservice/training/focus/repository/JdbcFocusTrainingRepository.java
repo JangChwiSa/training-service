@@ -60,6 +60,19 @@ public class JdbcFocusTrainingRepository implements FocusTrainingRepository {
     }
 
     @Override
+    public Optional<Integer> findSessionLevel(long sessionId) {
+        String sql = """
+                SELECT sub_type
+                FROM training_sessions
+                WHERE session_id = ?
+                  AND training_type = 'FOCUS'
+                """;
+        List<Integer> levels = jdbcTemplate.query(sql, (resultSet, rowNumber) ->
+                Integer.parseInt(resultSet.getString("sub_type")), sessionId);
+        return levels.stream().findFirst();
+    }
+
+    @Override
     public List<FocusCommandResponse> saveCommands(long sessionId, List<NewFocusCommand> commands) {
         List<FocusCommandResponse> savedCommands = new ArrayList<>();
         String sql = """
@@ -93,6 +106,42 @@ public class JdbcFocusTrainingRepository implements FocusTrainingRepository {
         }
 
         return savedCommands;
+    }
+
+    @Override
+    public List<FocusCommandRow> findCommands(long sessionId) {
+        String sql = """
+                SELECT command_id, command_order, command_text, expected_action
+                FROM focus_commands
+                WHERE session_id = ?
+                ORDER BY command_order ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new FocusCommandRow(
+                resultSet.getLong("command_id"),
+                resultSet.getInt("command_order"),
+                resultSet.getString("command_text"),
+                resultSet.getString("expected_action")
+        ), sessionId);
+    }
+
+    @Override
+    public void saveReactionLogs(long sessionId, List<ScoredFocusReaction> reactions) {
+        String sql = """
+                INSERT INTO focus_reaction_logs (
+                    command_id, session_id, user_input, is_correct, reaction_ms, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6))
+                """;
+        for (ScoredFocusReaction reaction : reactions) {
+            jdbcTemplate.update(
+                    sql,
+                    reaction.commandId(),
+                    sessionId,
+                    reaction.userInput(),
+                    reaction.correct(),
+                    reaction.reactionMs()
+            );
+        }
     }
 
     private static Integer nullableInteger(Object value) {

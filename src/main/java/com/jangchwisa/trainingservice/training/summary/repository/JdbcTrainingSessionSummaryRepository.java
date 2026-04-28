@@ -3,6 +3,8 @@ package com.jangchwisa.trainingservice.training.summary.repository;
 import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListItemResponse;
+import com.jangchwisa.trainingservice.training.summary.entity.TrainingSessionSummary;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,6 +17,40 @@ public class JdbcTrainingSessionSummaryRepository implements TrainingSessionSumm
 
     public JdbcTrainingSessionSummaryRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Override
+    public void save(TrainingSessionSummary summary) {
+        String sql = """
+                INSERT INTO training_session_summaries (
+                    session_id, user_id, training_type, scenario_id, scenario_title, category,
+                    title, score, summary_text, feedback_summary, correct_count, total_count,
+                    accuracy_rate, wrong_count, played_level, average_reaction_ms,
+                    completed_at, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        jdbcTemplate.update(
+                sql,
+                summary.sessionId(),
+                summary.userId(),
+                summary.trainingType().name(),
+                summary.scenarioId(),
+                summary.scenarioTitle(),
+                summary.category(),
+                summary.title(),
+                summary.score(),
+                summary.summaryText(),
+                summary.feedbackSummary(),
+                summary.correctCount(),
+                summary.totalCount(),
+                summary.accuracyRate(),
+                summary.wrongCount(),
+                summary.playedLevel(),
+                summary.averageReactionMs(),
+                Timestamp.valueOf(summary.completedAt()),
+                Timestamp.valueOf(summary.createdAt())
+        );
     }
 
     @Override

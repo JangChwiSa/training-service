@@ -5,7 +5,10 @@ import com.jangchwisa.trainingservice.common.security.AuthenticatedUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentSessionDetailResponse;
 import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionResponse;
+import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
+import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
 import com.jangchwisa.trainingservice.training.document.service.DocumentTrainingService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,5 +34,14 @@ public class DocumentTrainingController {
             @PathVariable long sessionId
     ) {
         return ApiResponse.success(documentTrainingService.getSessionDetail(currentUser, sessionId));
+    }
+
+    @PostMapping("/api/trainings/document/sessions/{sessionId}/answers")
+    public ApiResponse<SubmitDocumentAnswersResponse> submitAnswers(
+            @AuthenticatedUser CurrentUser currentUser,
+            @PathVariable long sessionId,
+            @Valid @org.springframework.web.bind.annotation.RequestBody SubmitDocumentAnswersRequest request
+    ) {
+        return ApiResponse.success(documentTrainingService.submitAnswers(currentUser, sessionId, request));
     }
 }

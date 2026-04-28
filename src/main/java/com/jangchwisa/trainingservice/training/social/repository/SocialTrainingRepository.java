@@ -1,5 +1,6 @@
 package com.jangchwisa.trainingservice.training.social.repository;
 
+import com.jangchwisa.trainingservice.training.social.dto.SocialDialogLogRequest;
 import com.jangchwisa.trainingservice.training.social.dto.SocialDialogLogResponse;
 import com.jangchwisa.trainingservice.training.social.dto.SocialFeedbackResponse;
 import com.jangchwisa.trainingservice.training.social.dto.SocialScenarioDetailResponse;
@@ -16,6 +17,14 @@ public interface SocialTrainingRepository {
 
     boolean existsActiveScenario(long scenarioId, SocialJobType jobType);
 
+    default Optional<SocialScenarioSummaryRow> findScenarioSummaryBySessionId(long sessionId) {
+        throw new UnsupportedOperationException("findScenarioSummaryBySessionId is not implemented.");
+    }
+
+    default void saveDialogLogs(long sessionId, List<SocialDialogLogRequest> dialogLogs) {
+        throw new UnsupportedOperationException("saveDialogLogs is not implemented.");
+    }
+
     Optional<SocialScoreRow> findScore(long sessionId);
 
     Optional<SocialFeedbackResponse> findFeedback(long sessionId);
@@ -23,5 +32,8 @@ public interface SocialTrainingRepository {
     List<SocialDialogLogResponse> findDialogLogs(long sessionId);
 
     record SocialScoreRow(int score, String scoreType) {
+    }
+
+    record SocialScenarioSummaryRow(long scenarioId, String title) {
     }
 }

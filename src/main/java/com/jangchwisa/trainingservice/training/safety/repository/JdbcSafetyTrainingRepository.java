@@ -131,6 +131,36 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
     }
 
     @Override
+    public Optional<SafetyScenarioSummaryRow> findScenarioSummaryBySessionId(long sessionId) {
+        String sql = """
+                SELECT scenario.scenario_id, scenario.category, scenario.title
+                FROM training_sessions session
+                JOIN safety_scenarios scenario ON scenario.scenario_id = session.scenario_id
+                WHERE session.session_id = ?
+                """;
+        List<SafetyScenarioSummaryRow> rows = jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SafetyScenarioSummaryRow(
+                resultSet.getLong("scenario_id"),
+                SafetyCategory.valueOf(resultSet.getString("category")),
+                resultSet.getString("title")
+        ), sessionId);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public SafetyActionSummaryRow summarizeActions(long sessionId) {
+        String sql = """
+                SELECT COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END), 0) AS correct_count,
+                       COUNT(*) AS total_count
+                FROM safety_action_logs
+                WHERE session_id = ?
+                """;
+        return jdbcTemplate.queryForObject(sql, (resultSet, rowNumber) -> new SafetyActionSummaryRow(
+                resultSet.getInt("correct_count"),
+                resultSet.getInt("total_count")
+        ), sessionId);
+    }
+
+    @Override
     public List<SafetyActionLogResponse> findActionLogs(long sessionId) {
         String sql = """
                 SELECT scene_id, choice_id, is_correct

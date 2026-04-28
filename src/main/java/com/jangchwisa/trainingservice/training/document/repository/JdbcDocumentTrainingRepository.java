@@ -34,6 +34,48 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
     }
 
     @Override
+    public List<DocumentQuestionAnswerRow> findQuestionAnswers(List<Long> questionIds) {
+        if (questionIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", questionIds.stream().map(id -> "?").toList());
+        String sql = """
+                SELECT question_id, title, question_text, correct_answer, explanation
+                FROM document_questions
+                WHERE question_id IN (%s)
+                  AND is_active = true
+                """.formatted(placeholders);
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionAnswerRow(
+                resultSet.getLong("question_id"),
+                resultSet.getString("title"),
+                resultSet.getString("question_text"),
+                resultSet.getString("correct_answer"),
+                resultSet.getString("explanation")
+        ), questionIds.toArray());
+    }
+
+    @Override
+    public void saveAnswerLogs(long sessionId, List<ScoredDocumentAnswer> answers) {
+        String sql = """
+                INSERT INTO document_answer_logs (
+                    session_id, question_id, user_answer, correct_answer, is_correct, explanation, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(6))
+                """;
+        for (ScoredDocumentAnswer answer : answers) {
+            jdbcTemplate.update(
+                    sql,
+                    sessionId,
+                    answer.questionId(),
+                    answer.userAnswer(),
+                    answer.correctAnswer(),
+                    answer.correct(),
+                    answer.explanation()
+            );
+        }
+    }
+
+    @Override
     public Optional<DocumentScoreRow> findScore(long sessionId) {
         String sql = """
                 SELECT score, correct_count, total_count

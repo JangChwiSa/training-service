@@ -5,6 +5,7 @@ import com.jangchwisa.trainingservice.common.exception.TrainingServiceException;
 import com.jangchwisa.trainingservice.common.response.ApiResponse;
 import com.jangchwisa.trainingservice.common.security.AuthenticatedUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
+import com.jangchwisa.trainingservice.training.safety.dto.CompleteSafetySessionResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.NextSafetySceneRequest;
 import com.jangchwisa.trainingservice.training.safety.dto.NextSafetySceneResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
@@ -67,6 +68,14 @@ public class SafetyTrainingController {
             @PathVariable long sessionId
     ) {
         return ApiResponse.success(safetyTrainingService.getSessionDetail(currentUser, sessionId));
+    }
+
+    @PostMapping("/api/trainings/safety/sessions/{sessionId}/complete")
+    public ApiResponse<CompleteSafetySessionResponse> completeSession(
+            @AuthenticatedUser CurrentUser currentUser,
+            @PathVariable long sessionId
+    ) {
+        return ApiResponse.success(safetyTrainingService.completeSession(currentUser, sessionId));
     }
 
     private SafetyCategory parseCategory(String category) {
