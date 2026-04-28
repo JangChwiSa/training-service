@@ -14,3 +14,10 @@ training:
     api-key: ${OPENAI_API_KEY:}
     timeout-ms: ${OPENAI_TIMEOUT_MS:30000}
     adapter: ${OPENAI_ADAPTER:local-fake}
+  outbox:
+    publisher:
+      enabled: ${OUTBOX_PUBLISHER_ENABLED:false}
+      batch-size: ${OUTBOX_PUBLISHER_BATCH_SIZE:50}
+      fixed-delay-ms: ${OUTBOX_PUBLISHER_FIXED_DELAY_MS:5000}
+      retry-backoff-base-seconds: ${OUTBOX_RETRY_BACKOFF_BASE_SECONDS:60}
+      retry-backoff-max-seconds: ${OUTBOX_RETRY_BACKOFF_MAX_SECONDS:3600}
