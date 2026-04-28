@@ -190,7 +190,7 @@ docs/product/project-plan.md
 docs/architecture/overall-architecture.md
 docs/architecture/sequence-diagrams.md
 docs/api/api-spec.md
-docs/database/database-spec.md
+docs/database/db-spec.md
 ```
 
 Training Service-specific documents:

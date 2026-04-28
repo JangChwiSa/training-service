@@ -12,7 +12,7 @@ Training Service는 API 명세, DB 명세, 시퀀스 다이어그램을 기준�
 ```text
 docs/api/api-spec.md
 docs/api/training-api-spec.md
-docs/database/database-spec.md
+docs/database/db-spec.md
 docs/database/training-db-spec.md
 docs/architecture/sequence-diagrams.md
 docs/architecture/overall-architecture.md
@@ -253,7 +253,7 @@ API 명세와 DB 명세는 구현 계약이다.
 ```text
 docs/api/api-spec.md
 docs/api/training-api-spec.md
-docs/database/database-spec.md
+docs/database/db-spec.md
 docs/database/training-db-spec.md
 docs/architecture/sequence-diagrams.md
 ```

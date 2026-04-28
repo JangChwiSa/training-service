@@ -4,7 +4,7 @@
 >
 > 원본 문서:
 >
-> - `docs/database/database-spec.md`
+> - `docs/database/db-spec.md`
 >
 > 원칙:
 >
