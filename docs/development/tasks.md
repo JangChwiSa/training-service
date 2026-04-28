@@ -757,6 +757,36 @@ Branch: feature/logging-tracing-baseline
 - 민감 정보와 OpenAI API key를 로그에 남기지 않는다.
 - sessionId/userId 기반 운영 추적이 가능하다.
 
+### Task 9.3 Swagger UI and OpenAPI documentation
+
+```text
+Branch: feature/swagger-ui
+```
+
+Reference documents:
+
+- `docs/api/api-spec.md`
+- `docs/api/training-api-spec.md`
+- `docs/architecture/security-context.md`
+- `AGENTS.md`
+
+Work:
+
+- Add Springdoc/OpenAPI dependency for Swagger UI.
+- Expose Swagger UI for Training Service APIs under `/api/trainings/**` and `/internal/trainings/**`.
+- Document trusted user header handling such as `X-User-Id` without accepting `userId` in request body or query parameters.
+- Group external Training APIs and internal Training APIs clearly.
+- Ensure API response examples use the common success/error response envelope.
+- Keep Swagger/OpenAPI metadata within Training Service boundaries only.
+
+Completion criteria:
+
+- Swagger UI is accessible in local development.
+- OpenAPI docs include Training Service-owned APIs only.
+- Security boundary rules are visible in API documentation.
+- Existing API contracts and database schemas are not changed.
+- Application context and API contract tests pass.
+
 ## 13. Phase 10 - Test and Quality Gate
 
 ### Task 10.1 Repository and service integration tests
