@@ -1,0 +1,74 @@
+package com.jangchwisa.trainingservice.training.document.repository;
+
+import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerDetailResponse;
+import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResponse;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class JdbcDocumentTrainingRepository implements DocumentTrainingRepository {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public JdbcDocumentTrainingRepository(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Override
+    public List<DocumentQuestionResponse> findActiveQuestions() {
+        String sql = """
+                SELECT question_id, title, document_text, question_text, question_type
+                FROM document_questions
+                WHERE is_active = true
+                ORDER BY question_id ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionResponse(
+                resultSet.getLong("question_id"),
+                resultSet.getString("title"),
+                resultSet.getString("document_text"),
+                resultSet.getString("question_text"),
+                resultSet.getString("question_type")
+        ));
+    }
+
+    @Override
+    public Optional<DocumentScoreRow> findScore(long sessionId) {
+        String sql = """
+                SELECT score, correct_count, total_count
+                FROM training_scores
+                WHERE session_id = ?
+                """;
+        List<DocumentScoreRow> scores = jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentScoreRow(
+                resultSet.getInt("score"),
+                resultSet.getInt("correct_count"),
+                resultSet.getInt("total_count")
+        ), sessionId);
+        return scores.stream().findFirst();
+    }
+
+    @Override
+    public List<DocumentAnswerDetailResponse> findAnswerLogs(long sessionId) {
+        String sql = """
+                SELECT answer.question_id,
+                       question.question_text,
+                       answer.user_answer,
+                       answer.correct_answer,
+                       answer.is_correct,
+                       answer.explanation
+                FROM document_answer_logs answer
+                JOIN document_questions question ON question.question_id = answer.question_id
+                WHERE answer.session_id = ?
+                ORDER BY answer.answer_id ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentAnswerDetailResponse(
+                resultSet.getLong("question_id"),
+                resultSet.getString("question_text"),
+                resultSet.getString("user_answer"),
+                resultSet.getString("correct_answer"),
+                resultSet.getBoolean("is_correct"),
+                resultSet.getString("explanation")
+        ), sessionId);
+    }
+}
