@@ -6,12 +6,15 @@ import com.jangchwisa.trainingservice.event.outbox.OutboxEvent;
 import com.jangchwisa.trainingservice.event.outbox.OutboxEventRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
 public class OutboxPublisherService {
 
+    private static final Logger log = LoggerFactory.getLogger(OutboxPublisherService.class);
     private static final String DLQ_REASON_INVALID_PAYLOAD = "INVALID_PAYLOAD";
     private static final String DLQ_REASON_MAX_RETRY_EXCEEDED = "MAX_RETRY_EXCEEDED";
 
@@ -60,9 +63,27 @@ public class OutboxPublisherService {
             validatePayload(event);
             eventBrokerPublisher.publish(event);
             outboxEventRepository.markPublished(event.eventId(), now);
+            log.info(
+                    "Outbox event published. eventId={}, eventType={}, userId={}, sessionId={}, trainingType={}, retryCount={}",
+                    event.eventId(),
+                    event.eventType(),
+                    event.userId(),
+                    event.sessionId(),
+                    event.trainingType(),
+                    event.retryCount()
+            );
             return true;
         } catch (InvalidOutboxPayloadException exception) {
             outboxEventRepository.markDlq(event.eventId(), DLQ_REASON_INVALID_PAYLOAD, exception.getMessage(), now);
+            log.warn(
+                    "Outbox event moved to DLQ. eventId={}, eventType={}, userId={}, sessionId={}, trainingType={}, reason={}",
+                    event.eventId(),
+                    event.eventType(),
+                    event.userId(),
+                    event.sessionId(),
+                    event.trainingType(),
+                    DLQ_REASON_INVALID_PAYLOAD
+            );
             return false;
         } catch (RuntimeException exception) {
             handlePublishFailure(event, exception, now);
@@ -96,6 +117,16 @@ public class OutboxPublisherService {
         String message = normalizeErrorMessage(exception);
         if (nextRetryCount >= event.maxRetryCount()) {
             outboxEventRepository.markDlq(event.eventId(), DLQ_REASON_MAX_RETRY_EXCEEDED, message, now);
+            log.error(
+                    "Outbox event moved to DLQ. eventId={}, eventType={}, userId={}, sessionId={}, trainingType={}, reason={}, errorType={}",
+                    event.eventId(),
+                    event.eventType(),
+                    event.userId(),
+                    event.sessionId(),
+                    event.trainingType(),
+                    DLQ_REASON_MAX_RETRY_EXCEEDED,
+                    exception.getClass().getSimpleName()
+            );
             return;
         }
 
@@ -105,6 +136,17 @@ public class OutboxPublisherService {
                 now.plusSeconds(retryBackoffSeconds(nextRetryCount)),
                 message,
                 now
+        );
+        log.warn(
+                "Outbox event publish failed and retry was scheduled. eventId={}, eventType={}, userId={}, sessionId={}, trainingType={}, retryCount={}, nextRetryAt={}, errorType={}",
+                event.eventId(),
+                event.eventType(),
+                event.userId(),
+                event.sessionId(),
+                event.trainingType(),
+                nextRetryCount,
+                now.plusSeconds(retryBackoffSeconds(nextRetryCount)),
+                exception.getClass().getSimpleName()
         );
     }
 

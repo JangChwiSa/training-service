@@ -13,9 +13,10 @@ public class LoggingEventBrokerPublisher implements EventBrokerPublisher {
     @Override
     public void publish(OutboxEvent outboxEvent) {
         log.info(
-                "Publishing event to broker placeholder. eventId={}, eventType={}, sessionId={}, trainingType={}",
+                "Publishing event to broker placeholder. eventId={}, eventType={}, userId={}, sessionId={}, trainingType={}",
                 outboxEvent.eventId(),
                 outboxEvent.eventType(),
+                outboxEvent.userId(),
                 outboxEvent.sessionId(),
                 outboxEvent.trainingType()
         );
