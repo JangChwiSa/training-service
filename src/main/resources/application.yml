@@ -19,6 +19,13 @@ management:
     db:
       enabled: true
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+
 logging:
   pattern:
     level: "%5p [traceId:%X{traceId:-} correlationId:%X{correlationId:-} userId:%X{userId:-} sessionId:%X{sessionId:-}]"
