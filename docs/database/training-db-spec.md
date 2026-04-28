@@ -599,7 +599,7 @@ CHECK: average_reaction_ms >= 0
 
 ## 3.14 training_feedbacks
 
-훈련 세션별 피드백을 저장하기 위한 테이블.
+훈련별 피드백과 해석 내용을 저장하기 위한 테이블.
 
 ### 속성
 
@@ -608,8 +608,9 @@ CHECK: average_reaction_ms >= 0
 | feedback_id | 피드백 고유 ID |
 | session_id | 훈련 세션 ID |
 | feedback_type | 피드백 유형 |
-| summary | 목록/요약 화면에 표시할 간략 피드백 |
-| detail_text | 상세 피드백 본문 |
+| feedback_source | 피드백 생성 주체 |
+| summary | 피드백 요약 |
+| detail_text | 상세 피드백 |
 | created_at | 생성일시 |
 
 ### 제약 조건
@@ -617,8 +618,9 @@ CHECK: average_reaction_ms >= 0
 ```text
 PK: feedback_id
 FK: session_id → training_sessions.session_id
-NOT NULL: session_id, feedback_type, summary, created_at
-CHECK: feedback_type IN ('AI', 'RULE_BASED', 'SYSTEM')
+NOT NULL: session_id, feedback_type, feedback_source, summary, created_at
+CHECK: feedback_type IN ('SUMMARY', 'DETAIL', 'RECOMMENDATION')
+CHECK: feedback_source IN ('AI', 'SYSTEM')
 ```
 
 ## 3.15 training_session_summaries
@@ -678,71 +680,6 @@ CHECK: average_reaction_ms >= 0
 - 상세보기 API는 기존 로그/점수/피드백 원본 테이블을 조회한다.
 - session_id만으로도 사용자 추적은 가능하지만, 목록 조회 성능과 사용자별 필터링을 위해 user_id를 중복 저장한다.
 ```
-
-## 3.16 training_scores
-
-훈련 세션별 리포트 표시용 대표 점수와 공통 결과를 저장하기 위한 테이블.
-
-### 속성
-
-| 속성명 | 설명 |
-| --- | --- |
-| score_id | 점수 고유 ID |
-| session_id | 훈련 세션 ID |
-| score | 리포트에 표시할 대표 점수 |
-| score_type | 점수 산정 방식 |
-| accuracy_rate | 정답률 기반 훈련의 정확도 |
-| wrong_count | 오답 수 |
-| level_result | 집중력 훈련 단계 결과 |
-| raw_metrics_json | 훈련별 세부 지표 JSON |
-| created_at | 생성일시 |
-
-### 제약 조건
-
-```text
-PK: score_id
-FK: session_id → training_sessions.session_id
-UNIQUE: session_id
-NOT NULL: session_id, score, score_type, created_at
-CHECK: score BETWEEN 0 AND 100
-CHECK: score_type IN ('AI_EVALUATION', 'ACCURACY_RATE', 'REACTION_PERFORMANCE', 'CHOICE_RESULT')
-CHECK: accuracy_rate BETWEEN 0 AND 100
-CHECK: wrong_count >= 0
-
-훈련별 사용 예시:
-- 사회성 훈련: score_type = 'AI_EVALUATION', raw_metrics_json에 대화 품질/응답 적절성/사회적 표현 점수 저장
-- 안전 훈련: score_type = 'CHOICE_RESULT', raw_metrics_json에 전체 선택 수/정답 선택 수/위험 선택 수 저장
-- 집중력 훈련: score_type = 'REACTION_PERFORMANCE', raw_metrics_json에 평균 반응시간/지시 수 등 세션 상세 지표 저장
-- 집중력 훈련의 현재 단계와 해금 단계는 user_focus_progress에 별도 저장
-- 문서 이해 훈련: score_type = 'ACCURACY_RATE', raw_metrics_json에 전체 문제 수/정답 수/오답 수 저장
-```
-
-## 3.17 training_feedbacks
-
-훈련별 피드백과 해석 내용을 저장하기 위한 테이블.
-
-### 속성
-
-| 속성명 | 설명 |
-| --- | --- |
-| feedback_id | 피드백 고유 ID |
-| session_id | 훈련 세션 ID |
-| feedback_type | 피드백 유형 |
-| feedback_source | 피드백 생성 주체 |
-| summary | 피드백 요약 |
-| detail_text | 상세 피드백 |
-| created_at | 생성일시 |
-
-### 제약 조건
-
-```text
-PK: feedback_id
-FK: session_id → training_sessions.session_id
-NOT NULL: session_id, feedback_type, feedback_source, summary, created_at
-CHECK: feedback_type IN ('SUMMARY', 'DETAIL', 'RECOMMENDATION')
-CHECK: feedback_source IN ('AI', 'SYSTEM')
-```
-
 ---
 
 # 4. 인덱스 전략

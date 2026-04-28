@@ -376,6 +376,14 @@ Training Service tests should cover:
 - Validation errors
 ```
 
+## Git Strategy
+
+Git branching, commit, and Pull Request rules are documented in:
+
+```text
+docs/development/git-strategy.md
+```
+
 ## Security Rules
 
 ```text
