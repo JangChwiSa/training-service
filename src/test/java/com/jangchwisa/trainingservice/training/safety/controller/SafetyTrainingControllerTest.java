@@ -132,6 +132,28 @@ class SafetyTrainingControllerTest {
     }
 
     @Test
+    void rejectsAnotherUsersSessionDetail() throws Exception {
+        ownershipRepository.save(20L, 2L);
+
+        mockMvc.perform(get("/api/trainings/safety/sessions/20/detail")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.error.message").value("Training session belongs to another user."));
+    }
+
+    @Test
+    void returnsNotFoundWhenSessionDoesNotExistForNextScene() throws Exception {
+        mockMvc.perform(post("/api/trainings/safety/sessions/999/next-scene")
+                        .header("X-User-Id", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sceneId\":1,\"choiceId\":2}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.error.message").value("Training session was not found."));
+    }
+
+    @Test
     void rejectsInvalidCategory() throws Exception {
         mockMvc.perform(get("/api/trainings/safety/scenarios")
                         .param("category", "UNKNOWN")

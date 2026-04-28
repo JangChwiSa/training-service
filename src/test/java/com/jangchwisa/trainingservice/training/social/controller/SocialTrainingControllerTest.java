@@ -132,6 +132,26 @@ class SocialTrainingControllerTest {
     }
 
     @Test
+    void rejectsAnotherUsersSessionDetail() throws Exception {
+        ownershipRepository.save(10L, 2L);
+
+        mockMvc.perform(get("/api/trainings/social/sessions/10/detail")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.error.message").value("Training session belongs to another user."));
+    }
+
+    @Test
+    void returnsNotFoundWhenSessionDoesNotExist() throws Exception {
+        mockMvc.perform(get("/api/trainings/social/sessions/999/detail")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.error.message").value("Training session was not found."));
+    }
+
+    @Test
     void rejectsInvalidJobType() throws Exception {
         mockMvc.perform(get("/api/trainings/social/scenarios")
                         .param("jobType", "UNKNOWN")

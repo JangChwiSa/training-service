@@ -104,6 +104,15 @@ class DocumentTrainingControllerTest {
                 .andExpect(jsonPath("$.error.message").value("Training session belongs to another user."));
     }
 
+    @Test
+    void returnsNotFoundWhenSessionDoesNotExist() throws Exception {
+        mockMvc.perform(get("/api/trainings/document/sessions/999/detail")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.error.message").value("Training session was not found."));
+    }
+
     private static DocumentQuestionResponse question(long questionId) {
         return new DocumentQuestionResponse(
                 questionId,

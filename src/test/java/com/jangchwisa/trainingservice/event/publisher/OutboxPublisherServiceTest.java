@@ -85,6 +85,38 @@ class OutboxPublisherServiceTest {
         assertThat(outboxEventRepository.lastErrorMessage).contains("Payload field is required");
     }
 
+    @Test
+    void capsRetryBackoffAtConfiguredMaximum() {
+        OutboxEvent event = event("evt-001", 10, 20, validPayload("evt-001"));
+        outboxEventRepository.events = List.of(event);
+        eventBrokerPublisher.failure = new EventPublishException("broker unavailable");
+
+        service.publishDueEvents();
+
+        assertThat(outboxEventRepository.retryEventId).isEqualTo("evt-001");
+        assertThat(outboxEventRepository.retryCount).isEqualTo(11);
+        assertThat(outboxEventRepository.nextRetryAt).isEqualTo(NOW_LOCAL.plusSeconds(3600));
+    }
+
+    @Test
+    void scheduledPublisherDoesNothingWhenDisabled() {
+        OutboxPublisherProperties disabledProperties = properties();
+        disabledProperties.setEnabled(false);
+        OutboxPublisherService disabledService = new OutboxPublisherService(
+                outboxEventRepository,
+                eventBrokerPublisher,
+                new ObjectMapper(),
+                disabledProperties,
+                Clock.fixed(NOW, ZONE_ID)
+        );
+        outboxEventRepository.events = List.of(event("evt-001", 0, 5, validPayload("evt-001")));
+
+        disabledService.publishScheduled();
+
+        assertThat(eventBrokerPublisher.publishedEvents).isEmpty();
+        assertThat(outboxEventRepository.publishedEventId).isNull();
+    }
+
     private OutboxPublisherProperties properties() {
         OutboxPublisherProperties properties = new OutboxPublisherProperties();
         properties.setBatchSize(10);

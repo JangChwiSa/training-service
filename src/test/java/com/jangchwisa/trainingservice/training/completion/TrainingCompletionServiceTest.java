@@ -122,6 +122,37 @@ class TrainingCompletionServiceTest {
     }
 
     @Test
+    void rejectsCompletionWhenSessionDoesNotExist() {
+        assertThatThrownBy(() -> service.complete(safetyCommand()))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+        assertThat(scoreRepository.saved).isNull();
+        assertThat(summaryRepository.saved).isNull();
+        assertThat(outboxEventRepository.saved).isNull();
+    }
+
+    @Test
+    void rejectsCompletionWhenTrainingTypeDoesNotMatchSession() {
+        sessionRepository.session = new TrainingSession(
+                10L,
+                1L,
+                TrainingType.SOCIAL,
+                "OFFICE",
+                20L,
+                TrainingSessionStatus.IN_PROGRESS,
+                0,
+                COMPLETED_AT.minusMinutes(3),
+                null
+        );
+
+        assertThatThrownBy(() -> service.complete(safetyCommand()))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        assertThat(scoreRepository.saved).isNull();
+        assertThat(outboxEventRepository.saved).isNull();
+    }
+
+    @Test
     void rejectsDuplicateCompletion() {
         sessionRepository.session = new TrainingSession(
                 10L,
@@ -170,6 +201,38 @@ class TrainingCompletionServiceTest {
         assertThatThrownBy(() -> service.complete(command))
                 .isInstanceOfSatisfying(TrainingServiceException.class, exception ->
                         assertThat(exception.errorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
+    void rejectsFocusCompletionWithoutRequiredProgressFields() {
+        sessionRepository.session = new TrainingSession(
+                10L,
+                1L,
+                TrainingType.FOCUS,
+                "2",
+                null,
+                TrainingSessionStatus.IN_PROGRESS,
+                0,
+                COMPLETED_AT.minusMinutes(3),
+                null
+        );
+
+        TrainingCompletionCommand command = new TrainingCompletionCommand(
+                1L,
+                10L,
+                TrainingType.FOCUS,
+                new TrainingCompletionScore(82, "REACTION_PERFORMANCE", 8, 10, BigDecimal.valueOf(80), 2, 650, null),
+                new TrainingCompletionFeedback("SUMMARY", "SYSTEM", "Focus training completed.", null),
+                new TrainingCompletionSummary(null, null, null, "Focus level 2", "Focus completion", 8, 10, BigDecimal.valueOf(80), 2, 2, 650),
+                TrainingCompletionProgress.none(),
+                null
+        );
+
+        assertThatThrownBy(() -> service.complete(command))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThat(progressRepository.saved).isNull();
+        assertThat(outboxEventRepository.saved).isNull();
     }
 
     private TrainingCompletionCommand safetyCommand() {
