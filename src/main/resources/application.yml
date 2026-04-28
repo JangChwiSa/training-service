@@ -10,3 +10,7 @@ server:
 training:
   security:
     trusted-user-id-header: ${TRUSTED_USER_ID_HEADER:X-User-Id}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    timeout-ms: ${OPENAI_TIMEOUT_MS:30000}
+    adapter: ${OPENAI_ADAPTER:local-fake}
