@@ -7,6 +7,18 @@ spring:
 server:
   port: 8080
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: always
+  health:
+    db:
+      enabled: true
+
 training:
   security:
     trusted-user-id-header: ${TRUSTED_USER_ID_HEADER:X-User-Id}

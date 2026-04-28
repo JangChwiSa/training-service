@@ -11,7 +11,11 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-RUN addgroup --system training && adduser --system --ingroup training training
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && addgroup --system training \
+    && adduser --system --ingroup training training
 
 COPY --from=build /workspace/target/training-service-0.0.1-SNAPSHOT.jar app.jar
 
