@@ -15,4 +15,4 @@ V1__create_training_core_tables.sql
 V2__create_training_module_tables.sql
 ```
 
-Task 2.1 only configures the migration tool. Schema migrations are added by later schema tasks.
+Local-only seed migrations live under `src/main/resources/db/seed/local` and are enabled only by the `local` profile.
