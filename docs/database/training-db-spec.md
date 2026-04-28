@@ -55,17 +55,19 @@ training_db : 사회성/안전/집중력/문서이해 훈련의 세션, 로그, 
 | user_id | 사용자 ID |
 | session_id | 훈련 세션 ID |
 | training_type | 훈련 유형: SOCIAL, SAFETY, FOCUS, DOCUMENT |
-| sub_type | 세부 유형. 사회성은 jobType, 집중력은 level 값 저장 |
 | scenario_id | 시나리오 ID. 시나리오 기반 훈련이 아닌 경우 NULL 허용 |
 | scenario_title | 목록 화면 표시용 시나리오 제목 스냅샷 |
 | category | 안전 훈련 카테고리 등 목록 필터용 분류값 |
+| title | 목록에 표시할 훈련 제목 |
 | score | 대표 점수 |
+| summary_text | 목록에 표시할 요약 문구 |
+| feedback_summary | 목록 화면 표시용 간략 피드백 |
 | accuracy_rate | 정확도. 집중력 또는 정답률 기반 훈련에서 사용 |
 | correct_count | 정답 수 |
 | total_count | 전체 문항/선택/지시 수 |
 | wrong_count | 오답 수 |
+| played_level | 집중력 훈련 수행 단계 |
 | average_reaction_ms | 평균 반응 시간. 집중력 훈련에서 사용 |
-| feedback_summary | 목록 화면 표시용 간략 피드백 |
 | completed_at | 훈련 완료 일시 |
 | created_at | 요약 생성 일시 |
 
@@ -73,16 +75,19 @@ training_db : 사회성/안전/집중력/문서이해 훈련의 세션, 로그, 
 
 ```text
 PK: summary_id
-FK: user_id → users.user_id
 FK: session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: session_id
-NOT NULL: user_id, session_id, training_type, completed_at, created_at
+NOT NULL: user_id, session_id, training_type, title, completed_at, created_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
+CHECK: category IN ('SEXUAL_EDUCATION', 'INFECTIOUS_DISEASE', 'COMMUTE_SAFETY') 또는 NULL 허용
 CHECK: score BETWEEN 0 AND 100 또는 NULL 허용
 CHECK: accuracy_rate BETWEEN 0 AND 100 또는 NULL 허용
 CHECK: correct_count >= 0 또는 NULL 허용
 CHECK: total_count >= 0 또는 NULL 허용
+CHECK: correct_count <= total_count 또는 NULL 허용
 CHECK: wrong_count >= 0 또는 NULL 허용
+CHECK: played_level >= 1 또는 NULL 허용
 CHECK: average_reaction_ms >= 0 또는 NULL 허용
 ```
 
@@ -92,11 +97,15 @@ CHECK: average_reaction_ms >= 0 또는 NULL 허용
 - 훈련 기록 목록 API는 training_session_summaries를 우선 조회한다.
 - 상세 조회 API는 training_session_summaries가 아니라 각 훈련별 원본 로그 테이블을 조회한다.
 - 훈련 완료 시 Training Service가 원본 로그, 점수, 피드백 저장 후 training_session_summaries를 생성한다.
+- 세부 유형은 training_session_summaries에 중복 저장하지 않고 training_sessions.sub_type을 원본으로 사용한다.
 ```
 
 ---
 
 # 2. 핵심 ERD
+
+다음 ERD의 `USERS` 연결은 사용자별 소유 관계를 설명하기 위한 논리 관계이다.
+Training Service는 `user_id`를 User Service의 사용자 ID를 참조하는 외부 식별자로 저장하며, `training_db`에는 `users.user_id`에 대한 물리 FK를 생성하지 않는다.
 
 ```mermaid
 erDiagram
@@ -145,7 +154,7 @@ erDiagram
 
 ```text
 PK: session_id
-FK: user_id → users.user_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 NOT NULL: user_id, training_type, status, started_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
 CHECK: status IN ('IN_PROGRESS', 'COMPLETED', 'FAILED')
@@ -225,8 +234,8 @@ UNIQUE: session_id + turn_no + speaker
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
 FK: recent_session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, completed_count, updated_at
 CHECK: recent_score BETWEEN 0 AND 100
@@ -352,8 +361,8 @@ NOT NULL: session_id, scene_id, choice_id, is_correct, created_at
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
 FK: recent_session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, correct_count, total_count, completed_count, updated_at
 CHECK: correct_count >= 0
@@ -465,7 +474,7 @@ CHECK: reaction_ms >= 0
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, current_level, highest_unlocked_level, updated_at
 CHECK: current_level >= 1
@@ -549,8 +558,8 @@ UNIQUE: session_id + question_id
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
 FK: recent_session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, correct_count, total_count, completed_count, updated_at
 CHECK: correct_count >= 0
@@ -656,7 +665,7 @@ CHECK: feedback_source IN ('AI', 'SYSTEM')
 ```text
 PK: summary_id
 FK: session_id → training_sessions.session_id
-FK: user_id → users.user_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: session_id
 NOT NULL: session_id, user_id, training_type, title, completed_at, created_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
