@@ -52,6 +52,12 @@ class MigrationBaselineIntegrationTest {
 
             assertThat(metadata.getDatabaseProductName()).containsIgnoringCase("MySQL");
             assertThat(flywaySchemaHistoryExists(connection)).isTrue();
+            assertThat(tableExists(connection, "training_sessions")).isTrue();
+            assertThat(tableExists(connection, "training_scores")).isTrue();
+            assertThat(tableExists(connection, "training_feedbacks")).isTrue();
+            assertThat(tableExists(connection, "training_session_summaries")).isTrue();
+            assertThat(tableExists(connection, "outbox_events")).isTrue();
+            assertThat(userIdForeignKeyCount(connection)).isZero();
         }
 
         MigrationInfo[] migrations = flyway.info().all();
@@ -73,6 +79,40 @@ class MigrationBaselineIntegrationTest {
              ResultSet resultSet = statement.executeQuery()) {
             resultSet.next();
             return resultSet.getInt(1) == 1;
+        }
+    }
+
+    private boolean tableExists(Connection connection, String tableName) throws Exception {
+        String sql = """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, tableName);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1) == 1;
+            }
+        }
+    }
+
+    private int userIdForeignKeyCount(Connection connection) throws Exception {
+        String sql = """
+                SELECT COUNT(*)
+                FROM information_schema.key_column_usage
+                WHERE table_schema = DATABASE()
+                  AND column_name = 'user_id'
+                  AND referenced_table_name IS NOT NULL
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            resultSet.next();
+            return resultSet.getInt(1);
         }
     }
 }
