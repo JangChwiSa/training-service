@@ -19,19 +19,19 @@
 - 필수 문서가 없거나 outbox처럼 구현에 필요한 DB 계약이 누락되어 있으면 구현 task보다 문서 정합성 task를 먼저 수행한다.
 ```
 
-## 2.1 Current Documentation Gaps
+## 2.1 Current Documentation Status
 
-구현 시작 전 다음 문서 정합성 문제를 먼저 해결한다.
+구현 시작 전 다음 문서 정합성 상태를 확인한다.
 
 ```text
-- AGENTS.md에는 docs/product/project-plan.md가 필수 문서로 적혀 있지만 현재 저장소에는 해당 파일이 없다.
-- event outbox 테이블은 task와 event-outbox 문서에는 필요하다고 되어 있지만 DB spec에는 테이블 컬럼과 제약 조건이 없다.
+- AGENTS.md에서 요구하는 docs/product/project-plan.md가 존재한다.
+- event outbox 테이블은 docs/database/db-spec.md와 docs/database/training-db-spec.md에 outbox_events로 정의되어 있다.
 ```
 
-필요한 선행 작업:
+진행 기준:
 
-- `docs/product/project-plan.md`를 추가하거나 AGENTS.md의 Required Documents 목록에서 제거한다.
-- `docs/database/db-spec.md`와 `docs/database/training-db-spec.md`에 outbox 테이블 명세를 먼저 추가한다.
+- 구현 task 시작 전 `docs/product/project-plan.md`를 포함한 관련 문서를 먼저 읽는다.
+- outbox 구현 task는 DB spec의 `outbox_events` 계약을 기준으로 진행한다.
 
 ## 3. Phase 0 - Project Scaffold
 
@@ -157,8 +157,9 @@ Branch: feature/database-migration-setup
 
 완료 기준:
 
-- 빈 MySQL에서 migration이 순서대로 실행된다.
-- migration 실패 시 테스트가 실패한다.
+- migration 도구가 local/test profile에서 실행 가능하다.
+- migration 파일 위치, naming rule, 실행 profile이 문서화되어 있다.
+- 실제 schema 검증은 Task 2.2 이후 migration smoke test에서 수행한다.
 
 ### Task 2.2 Integration test baseline for migration
 
@@ -554,6 +555,7 @@ Branch: feature/document-training-api
 - question별 중복 답변 정책이 테스트로 고정된다.
 - detail 조회는 session ownership을 검증한다.
 - 실제 답변 저장, 채점, 완료 처리는 Module completion task에서 구현한다.
+- document detail API는 완료 데이터가 필요한 조회이므로 Phase 7 completion flow 이후 최종 응답 검증을 완료한다.
 
 ## 9. Phase 6 - OpenAI Evaluation Boundary
 
@@ -596,10 +598,14 @@ Branch: feature/openai-training-evaluation
 - `docs/api/training-api-spec.md`
 - `docs/database/training-db-spec.md`
 - `docs/modules/social-training.md`
+- `docs/modules/safety-training.md`
+- `docs/modules/focus-training.md`
+- `docs/modules/document-training.md`
 
 작업:
 
-- social dialogue evaluation
+- social dialogue evaluation은 OpenAI adapter를 사용한다.
+- safety, focus, document는 deterministic scoring을 기본으로 하고, adaptive feedback이 필요한 경우에만 OpenAI adapter를 사용한다.
 - training score generation
 - feedback generation
 - raw metrics 저장
@@ -610,6 +616,7 @@ Branch: feature/openai-training-evaluation
 - 실패/timeout/fallback 정책이 테스트로 고정된다.
 - 개인정보와 불필요한 user profile을 OpenAI 요청에 포함하지 않는다.
 - fallback을 사용한 경우 feedback_source 또는 raw_metrics_json에 근거를 남긴다.
+- 모듈별 AI 사용 여부가 테스트 double 또는 설정으로 분리되어 테스트에서 실제 OpenAI API를 호출하지 않는다.
 
 ## 10. Phase 7 - Completion Flow
 
