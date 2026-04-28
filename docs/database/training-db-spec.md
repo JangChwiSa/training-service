@@ -4,7 +4,7 @@
 >
 > 원본 문서:
 >
-> - `docs/database/database-spec.md`
+> - `docs/database/db-spec.md`
 >
 > 원칙:
 >
@@ -55,17 +55,19 @@ training_db : 사회성/안전/집중력/문서이해 훈련의 세션, 로그, 
 | user_id | 사용자 ID |
 | session_id | 훈련 세션 ID |
 | training_type | 훈련 유형: SOCIAL, SAFETY, FOCUS, DOCUMENT |
-| sub_type | 세부 유형. 사회성은 jobType, 집중력은 level 값 저장 |
 | scenario_id | 시나리오 ID. 시나리오 기반 훈련이 아닌 경우 NULL 허용 |
 | scenario_title | 목록 화면 표시용 시나리오 제목 스냅샷 |
 | category | 안전 훈련 카테고리 등 목록 필터용 분류값 |
+| title | 목록에 표시할 훈련 제목 |
 | score | 대표 점수 |
+| summary_text | 목록에 표시할 요약 문구 |
+| feedback_summary | 목록 화면 표시용 간략 피드백 |
 | accuracy_rate | 정확도. 집중력 또는 정답률 기반 훈련에서 사용 |
 | correct_count | 정답 수 |
 | total_count | 전체 문항/선택/지시 수 |
 | wrong_count | 오답 수 |
+| played_level | 집중력 훈련 수행 단계 |
 | average_reaction_ms | 평균 반응 시간. 집중력 훈련에서 사용 |
-| feedback_summary | 목록 화면 표시용 간략 피드백 |
 | completed_at | 훈련 완료 일시 |
 | created_at | 요약 생성 일시 |
 
@@ -73,16 +75,19 @@ training_db : 사회성/안전/집중력/문서이해 훈련의 세션, 로그, 
 
 ```text
 PK: summary_id
-FK: user_id → users.user_id
 FK: session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: session_id
-NOT NULL: user_id, session_id, training_type, completed_at, created_at
+NOT NULL: user_id, session_id, training_type, title, completed_at, created_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
+CHECK: category IN ('SEXUAL_EDUCATION', 'INFECTIOUS_DISEASE', 'COMMUTE_SAFETY') 또는 NULL 허용
 CHECK: score BETWEEN 0 AND 100 또는 NULL 허용
 CHECK: accuracy_rate BETWEEN 0 AND 100 또는 NULL 허용
 CHECK: correct_count >= 0 또는 NULL 허용
 CHECK: total_count >= 0 또는 NULL 허용
+CHECK: correct_count <= total_count 또는 NULL 허용
 CHECK: wrong_count >= 0 또는 NULL 허용
+CHECK: played_level >= 1 또는 NULL 허용
 CHECK: average_reaction_ms >= 0 또는 NULL 허용
 ```
 
@@ -92,11 +97,15 @@ CHECK: average_reaction_ms >= 0 또는 NULL 허용
 - 훈련 기록 목록 API는 training_session_summaries를 우선 조회한다.
 - 상세 조회 API는 training_session_summaries가 아니라 각 훈련별 원본 로그 테이블을 조회한다.
 - 훈련 완료 시 Training Service가 원본 로그, 점수, 피드백 저장 후 training_session_summaries를 생성한다.
+- 세부 유형은 training_session_summaries에 중복 저장하지 않고 training_sessions.sub_type을 원본으로 사용한다.
 ```
 
 ---
 
 # 2. 핵심 ERD
+
+다음 ERD의 `USERS` 연결은 사용자별 소유 관계를 설명하기 위한 논리 관계이다.
+Training Service는 `user_id`를 User Service의 사용자 ID를 참조하는 외부 식별자로 저장하며, `training_db`에는 `users.user_id`에 대한 물리 FK를 생성하지 않는다.
 
 ```mermaid
 erDiagram
@@ -117,6 +126,7 @@ erDiagram
     TRAINING_SESSIONS ||--o{ TRAINING_FEEDBACKS : has
     USERS ||--o{ TRAINING_SESSION_SUMMARIES : has
     TRAINING_SESSIONS ||--o| TRAINING_SESSION_SUMMARIES : summarizes
+    TRAINING_SESSIONS ||--o{ OUTBOX_EVENTS : publishes
 ```
 
 ---
@@ -145,7 +155,7 @@ erDiagram
 
 ```text
 PK: session_id
-FK: user_id → users.user_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 NOT NULL: user_id, training_type, status, started_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
 CHECK: status IN ('IN_PROGRESS', 'COMPLETED', 'FAILED')
@@ -225,8 +235,8 @@ UNIQUE: session_id + turn_no + speaker
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
 FK: recent_session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, completed_count, updated_at
 CHECK: recent_score BETWEEN 0 AND 100
@@ -352,8 +362,8 @@ NOT NULL: session_id, scene_id, choice_id, is_correct, created_at
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
 FK: recent_session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, correct_count, total_count, completed_count, updated_at
 CHECK: correct_count >= 0
@@ -465,7 +475,7 @@ CHECK: reaction_ms >= 0
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, current_level, highest_unlocked_level, updated_at
 CHECK: current_level >= 1
@@ -549,8 +559,8 @@ UNIQUE: session_id + question_id
 
 ```text
 PK: progress_id
-FK: user_id → users.user_id
 FK: recent_session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
 NOT NULL: user_id, correct_count, total_count, completed_count, updated_at
 CHECK: correct_count >= 0
@@ -656,7 +666,7 @@ CHECK: feedback_source IN ('AI', 'SYSTEM')
 ```text
 PK: summary_id
 FK: session_id → training_sessions.session_id
-FK: user_id → users.user_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: session_id
 NOT NULL: session_id, user_id, training_type, title, completed_at, created_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
@@ -680,6 +690,62 @@ CHECK: average_reaction_ms >= 0
 - 상세보기 API는 기존 로그/점수/피드백 원본 테이블을 조회한다.
 - session_id만으로도 사용자 추적은 가능하지만, 목록 조회 성능과 사용자별 필터링을 위해 user_id를 중복 저장한다.
 ```
+
+## 3.16 outbox_events
+
+Training Service가 `TrainingCompleted` 이벤트를 안정적으로 발행하기 위한 outbox 테이블.
+
+훈련 완료 데이터와 같은 트랜잭션에서 outbox event를 저장하고, 별도 publisher가 미발행 이벤트를 Event Broker로 발행한다.
+
+### 속성
+
+| 속성명 | 설명 |
+| --- | --- |
+| event_id | 이벤트 고유 ID. Event Broker payload의 eventId로 사용 |
+| event_type | 이벤트 유형. 현재 기본값은 TrainingCompleted |
+| aggregate_type | 이벤트가 속한 aggregate 유형. 현재 기본값은 TrainingSession |
+| aggregate_id | aggregate ID. TrainingCompleted에서는 session_id |
+| session_id | 훈련 세션 ID |
+| user_id | 사용자 ID |
+| training_type | 훈련 유형 |
+| payload_json | Event Broker로 발행할 이벤트 payload JSON |
+| status | 발행 상태 |
+| retry_count | 발행 재시도 횟수 |
+| max_retry_count | DLQ 전환 전 최대 재시도 횟수 |
+| next_retry_at | 다음 발행 재시도 가능 일시 |
+| published_at | 발행 성공 일시 |
+| last_error_message | 마지막 발행 실패 사유 |
+| dlq_reason | DLQ 전환 사유 |
+| created_at | 생성일시 |
+| updated_at | 수정일시 |
+
+### 제약 조건
+
+```text
+PK: event_id
+FK: session_id → training_sessions.session_id
+REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
+UNIQUE: session_id + event_type
+NOT NULL: event_id, event_type, aggregate_type, aggregate_id, session_id, user_id, training_type, payload_json, status, retry_count, max_retry_count, created_at, updated_at
+CHECK: event_type IN ('TrainingCompleted')
+CHECK: aggregate_type IN ('TrainingSession')
+CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
+CHECK: status IN ('PENDING', 'PUBLISHED', 'RETRY', 'DLQ')
+CHECK: retry_count >= 0
+CHECK: max_retry_count >= 0
+CHECK: retry_count <= max_retry_count
+```
+
+### 저장 및 발행 기준
+
+```text
+- 훈련 완료 트랜잭션 안에서 완료 데이터와 outbox_events row를 함께 저장한다.
+- 생성 시 status는 PENDING을 기본으로 한다.
+- Event Broker 발행 성공 시 status를 PUBLISHED로 바꾸고 published_at을 기록한다.
+- 일시적 실패 시 status를 RETRY로 유지하고 retry_count, next_retry_at, last_error_message를 갱신한다.
+- payload schema 오류, 필수 필드 누락, 최대 retry 횟수 초과 시 status를 DLQ로 바꾸고 dlq_reason을 기록한다.
+- 이미 완료된 session_id에 대한 중복 완료 요청은 outbox event를 중복 생성하지 않는다.
+```
 ---
 
 # 4. 인덱스 전략
@@ -699,6 +765,8 @@ training_scores(session_id)
 safety_scenarios(category, is_active)
 training_session_summaries(user_id, training_type, completed_at)
 training_session_summaries(user_id, training_type, category, completed_at)
+outbox_events(status, next_retry_at, created_at)
+outbox_events(session_id)
 ```
 
 ---
@@ -710,5 +778,6 @@ training_session_summaries(user_id, training_type, category, completed_at)
 - session_id 기반 상세 조회 시 해당 session_id가 현재 user_id의 세션인지 반드시 검증한다.
 - 대화 로그와 반응 로그는 데이터 증가량이 크므로 파티셔닝을 고려한다.
 - 훈련 종료 시 세션, 로그, 점수, 피드백 저장은 트랜잭션으로 처리한다.
+- 훈련 완료 이벤트는 완료 트랜잭션 안에서 outbox_events에 저장한 뒤 별도 publisher가 발행한다.
 - 리포트는 TrainingCompleted 이벤트 기반으로 비동기 갱신한다.
 ```

@@ -1,4 +1,4 @@
-# API 명세서 작성
+﻿# API 명세서 작성
 
 ## 1. 설계 기준
 
@@ -491,29 +491,29 @@ FOCUS    → user_focus_progress
 공통:
 - training_session_summaries
 - type=SAFETY 이고 category 값이 있으면 training_session_summaries.category로 추가 필터링
-- 목록 응답의 scenarioId, scenarioTitle, feedbackSummary는 training_session_summaries.scenario_id, scenario_title, feedback_summary를 우선 사용한다.
+- 목록 응답은 training_session_summaries에 저장된 스냅샷 필드만 사용한다.
 
 사회성:
 - 대화 로그는 목록에서 조회하지 않는다.
-- training_scores.score, training_feedbacks.summary만 목록에 표시한다.
+- score, feedbackSummary는 training_session_summaries.score, feedback_summary를 사용한다.
 
 안전:
 - 선택 이력 전체는 목록에서 조회하지 않는다.
-- training_scores.raw_metrics_json 또는 safety_action_logs 집계값으로 정답 수/전체 수를 표시한다.
+- correctCount, totalCount는 training_session_summaries.correct_count, total_count를 사용한다.
 
 문서 이해:
 - 문제별 답변 전체는 목록에서 조회하지 않는다.
-- training_scores.raw_metrics_json 또는 document_answer_logs 집계값으로 정답 수/전체 수를 표시한다.
+- correctCount, totalCount는 training_session_summaries.correct_count, total_count를 사용한다.
 
 집중력:
 - 반응 로그 전체는 목록에서 조회하지 않는다.
-- training_scores.accuracy_rate, wrong_count, raw_metrics_json의 평균 반응시간/수행 단계 정보를 표시한다.
+- playedLevel, accuracyRate, wrongCount, averageReactionMs는 training_session_summaries의 스냅샷 필드를 사용한다.
 ```
 
 ### 정렬 기준
 
 ```
-training_sessions.ended_at DESC
+training_session_summaries.completed_at DESC
 ```
 
 ### Response - SOCIAL
@@ -1609,15 +1609,4 @@ Report Service
 - 이벤트 발행은 Outbox Pattern을 사용한다.
 - 소비 실패 시 Retry 후 DLQ로 이동한다.
 - 리포트 조회 시 report_db가 비어 있거나 최신 결과와 불일치하면 Training Service 최신 결과 재조회 API로 복구한다.
-```
-
----
-
-# 14. 참고 문서 간 불일치 메모
-
-```
-- 데이터베이스 구조 설계와 시퀀스다이어그램 기준으로 회사 추천 기능은 API 설계에서 제외했다.
-- 3.3 시스템 아키텍처 설계에는 Job Service, job_db, JobRecommendationRequested가 아직 남아 있다.
-- 실제 API 설계 기준은 현재 시퀀스다이어그램과 데이터베이스 구조 설계에 맞추어 User / Training / Voice / Report 중심으로 정리했다.
-- 3.3 시스템 아키텍처 설계의 Event Brok는 Event Broker로 수정하는 것이 좋다.
 ```
