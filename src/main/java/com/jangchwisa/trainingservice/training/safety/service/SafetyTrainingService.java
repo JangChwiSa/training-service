@@ -91,14 +91,13 @@ public class SafetyTrainingService {
 
         SafetyChoiceRow choice = safetyTrainingRepository.findChoice(sceneId, choiceId)
                 .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Safety choice was not found."));
-        safetyTrainingRepository.saveActionLog(sessionId, sceneId, choiceId, choice.correct());
-        trainingSessionService.advanceCurrentStep(sessionId, (int) sceneId);
-
         SafetySceneResponse nextScene = null;
         if (choice.nextSceneId() != null) {
             nextScene = safetyTrainingRepository.findScene(choice.nextSceneId())
                     .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Safety scene was not found."));
         }
+        safetyTrainingRepository.saveActionLog(sessionId, sceneId, choiceId, choice.correct());
+        trainingSessionService.advanceCurrentStep(sessionId, nextScene == null ? (int) sceneId : (int) nextScene.sceneId());
 
         return new NextSafetySceneResponse(new SafetySelectedResultResponse(choice.correct()), nextScene);
     }

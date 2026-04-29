@@ -1,8 +1,8 @@
 INSERT INTO social_scenarios
     (scenario_id, job_type, title, background_text, situation_text, character_info, difficulty, is_active)
 VALUES
-    (1, 'OFFICE', 'Ask a coworker for help', 'You are working in an office and need help finishing a task.', 'A coworker is nearby, but they also look busy.', 'Coworker: kind but focused on their own work.', 'EASY', TRUE),
-    (2, 'LABOR', 'Report a workplace mistake', 'You are working at a job site and notice a small mistake in your task.', 'You need to explain the mistake to your supervisor calmly.', 'Supervisor: direct, practical, and safety-focused.', 'EASY', TRUE);
+    (1, 'OFFICE', 'Ask a coworker for help', 'You are working in an office and need help finishing a task.', 'A coworker is nearby, but they also look busy.', 'Coworker: kind but focused on their own work.', '1', TRUE),
+    (2, 'LABOR', 'Report a workplace mistake', 'You are working at a job site and notice a small mistake in your task.', 'You need to explain the mistake to your supervisor calmly.', 'Supervisor: direct, practical, and safety-focused.', '1', TRUE);
 
 INSERT INTO safety_scenarios
     (scenario_id, title, category, description, is_active, created_at)

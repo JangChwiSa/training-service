@@ -33,7 +33,7 @@ public class JdbcSocialTrainingRepository implements SocialTrainingRepository {
         return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SocialScenarioListItemResponse(
                 resultSet.getLong("scenario_id"),
                 resultSet.getString("title"),
-                resultSet.getString("difficulty")
+                parseDifficulty(resultSet.getString("difficulty"))
         ), jobType.name());
     }
 
@@ -52,7 +52,7 @@ public class JdbcSocialTrainingRepository implements SocialTrainingRepository {
                 resultSet.getString("background_text"),
                 resultSet.getString("situation_text"),
                 resultSet.getString("character_info"),
-                resultSet.getString("difficulty")
+                parseDifficulty(resultSet.getString("difficulty"))
         ), scenarioId);
         return scenarios.stream().findFirst();
     }
@@ -151,5 +151,18 @@ public class JdbcSocialTrainingRepository implements SocialTrainingRepository {
                 SocialDialogSpeaker.valueOf(resultSet.getString("speaker")),
                 resultSet.getString("content")
         ), sessionId);
+    }
+
+    private static Integer parseDifficulty(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase();
+        return switch (normalized) {
+            case "EASY" -> 1;
+            case "MEDIUM" -> 2;
+            case "HARD" -> 3;
+            default -> Integer.valueOf(normalized);
+        };
     }
 }

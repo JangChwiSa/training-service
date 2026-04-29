@@ -16,7 +16,7 @@ public record SocialScenarioDetailResponse(
         String situationText,
         @Schema(description = "대화 상대 또는 등장인물 정보입니다.")
         String characterInfo,
-        @Schema(description = "시나리오 난이도입니다.", example = "EASY")
-        String difficulty
+        @Schema(description = "시나리오 난이도입니다.", example = "1")
+        Integer difficulty
 ) {
 }

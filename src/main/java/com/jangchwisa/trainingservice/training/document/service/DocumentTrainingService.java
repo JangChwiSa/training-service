@@ -107,6 +107,8 @@ public class DocumentTrainingService {
 
         DocumentScoreRow score = documentTrainingRepository.findScore(sessionId)
                 .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Document training score was not found."));
+        documentTrainingRepository.findFeedback(sessionId)
+                .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Document training feedback was not found."));
 
         return new DocumentSessionDetailResponse(
                 sessionId,

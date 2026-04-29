@@ -156,6 +156,23 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
     }
 
     @Override
+    public Optional<DocumentFeedbackRow> findFeedback(long sessionId) {
+        String sql = """
+                SELECT summary, detail_text
+                FROM training_feedbacks
+                WHERE session_id = ?
+                  AND feedback_type = 'SUMMARY'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """;
+        List<DocumentFeedbackRow> feedbacks = jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentFeedbackRow(
+                resultSet.getString("summary"),
+                resultSet.getString("detail_text")
+        ), sessionId);
+        return feedbacks.stream().findFirst();
+    }
+
+    @Override
     public List<DocumentAnswerDetailResponse> findAnswerLogs(long sessionId) {
         String sql = """
                 SELECT answer.question_id,

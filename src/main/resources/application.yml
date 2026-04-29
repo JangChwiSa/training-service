@@ -37,6 +37,8 @@ training:
     api-key: ${OPENAI_API_KEY:}
     timeout-ms: ${OPENAI_TIMEOUT_MS:30000}
     adapter: ${OPENAI_ADAPTER:local-fake}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1/responses}
+    model: ${OPENAI_MODEL:}
   outbox:
     publisher:
       enabled: ${OUTBOX_PUBLISHER_ENABLED:false}
@@ -44,3 +46,6 @@ training:
       fixed-delay-ms: ${OUTBOX_PUBLISHER_FIXED_DELAY_MS:5000}
       retry-backoff-base-seconds: ${OUTBOX_RETRY_BACKOFF_BASE_SECONDS:60}
       retry-backoff-max-seconds: ${OUTBOX_RETRY_BACKOFF_MAX_SECONDS:3600}
+  event-broker:
+    url: ${EVENT_BROKER_URL:}
+    timeout-ms: ${EVENT_BROKER_TIMEOUT_MS:5000}

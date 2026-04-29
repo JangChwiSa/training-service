@@ -14,7 +14,7 @@ class LocalFakeOpenAiTrainingEvaluationAdapterTest {
 
     @Test
     void evaluatesWithoutCallingRealOpenAiApi() {
-        OpenAiProperties properties = new OpenAiProperties(null, 30000, "local-fake");
+        OpenAiProperties properties = new OpenAiProperties(null, 30000, "local-fake", null, null);
         TrainingEvaluationAdapter adapter = new LocalFakeOpenAiTrainingEvaluationAdapter(properties);
 
         TrainingEvaluationResult result = adapter.evaluate(new TrainingEvaluationRequest(

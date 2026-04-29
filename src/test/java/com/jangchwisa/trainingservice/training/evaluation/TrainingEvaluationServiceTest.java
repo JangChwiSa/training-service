@@ -23,7 +23,7 @@ class TrainingEvaluationServiceTest {
     TrainingEvaluationService service = new TrainingEvaluationService(
             adapter,
             new TrainingEvaluationResultMapper(),
-            new OpenAiProperties(null, 50, "test")
+            new OpenAiProperties(null, 50, "test", null, null)
     );
 
     @Test

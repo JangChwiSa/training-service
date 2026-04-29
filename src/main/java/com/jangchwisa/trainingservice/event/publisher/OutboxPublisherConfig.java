@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(OutboxPublisherProperties.class)
+@EnableConfigurationProperties({OutboxPublisherProperties.class, EventBrokerProperties.class})
 public class OutboxPublisherConfig {
 
     @Bean

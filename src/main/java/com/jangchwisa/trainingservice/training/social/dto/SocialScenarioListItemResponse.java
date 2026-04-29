@@ -7,7 +7,7 @@ public record SocialScenarioListItemResponse(
         long scenarioId,
         @Schema(description = "시나리오 제목입니다.", example = "Ask a coworker for help")
         String title,
-        @Schema(description = "시나리오 난이도입니다.", example = "EASY")
-        String difficulty
+        @Schema(description = "시나리오 난이도입니다.", example = "1")
+        Integer difficulty
 ) {
 }

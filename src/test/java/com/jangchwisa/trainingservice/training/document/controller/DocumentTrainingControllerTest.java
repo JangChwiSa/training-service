@@ -11,6 +11,7 @@ import com.jangchwisa.trainingservice.common.security.TrustedUserHeaderPropertie
 import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerDetailResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResponse;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository;
+import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentFeedbackRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
 import com.jangchwisa.trainingservice.training.document.service.DocumentTrainingService;
@@ -90,6 +91,7 @@ class DocumentTrainingControllerTest {
     void returnsSessionDetailAfterOwnershipValidation() throws Exception {
         ownershipRepository.save(10L, 1L);
         documentRepository.score = Optional.of(new DocumentTrainingRepository.DocumentScoreRow(80, 8, 10));
+        documentRepository.feedback = Optional.of(new DocumentFeedbackRow("Summary", "Detail"));
         documentRepository.answerLogs = List.of(new DocumentAnswerDetailResponse(
                 1L,
                 "What time does work start?",
@@ -150,6 +152,7 @@ class DocumentTrainingControllerTest {
 
         List<DocumentQuestionResponse> questions = List.of();
         Optional<DocumentScoreRow> score = Optional.empty();
+        Optional<DocumentFeedbackRow> feedback = Optional.empty();
         List<DocumentAnswerDetailResponse> answerLogs = List.of();
 
         @Override
@@ -183,6 +186,11 @@ class DocumentTrainingControllerTest {
         @Override
         public Optional<DocumentScoreRow> findScore(long sessionId) {
             return score;
+        }
+
+        @Override
+        public Optional<DocumentFeedbackRow> findFeedback(long sessionId) {
+            return feedback;
         }
 
         @Override

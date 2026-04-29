@@ -210,7 +210,7 @@ class SocialTrainingServiceTest {
         TrainingEvaluationService evaluationService = new TrainingEvaluationService(
                 adapter,
                 new TrainingEvaluationResultMapper(),
-                new OpenAiProperties(null, 50, "test")
+                new OpenAiProperties(null, 50, "test", null, null)
         );
         TrainingCompletionService completionService = new TrainingCompletionService(
                 sessionRepository,
@@ -248,7 +248,7 @@ class SocialTrainingServiceTest {
 
         @Override
         public List<SocialScenarioListItemResponse> findActiveScenariosByJobType(SocialJobType jobType) {
-            return List.of(new SocialScenarioListItemResponse(1L, "동료에게 도움 요청하기", "EASY"));
+            return List.of(new SocialScenarioListItemResponse(1L, "동료에게 도움 요청하기", 1));
         }
 
         @Override
@@ -260,7 +260,7 @@ class SocialTrainingServiceTest {
                     "배경",
                     "상황",
                     "동료",
-                    "EASY"
+                    1
             ));
         }
 

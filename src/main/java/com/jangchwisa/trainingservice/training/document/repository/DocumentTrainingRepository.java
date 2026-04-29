@@ -36,9 +36,16 @@ public interface DocumentTrainingRepository {
 
     Optional<DocumentScoreRow> findScore(long sessionId);
 
+    default Optional<DocumentFeedbackRow> findFeedback(long sessionId) {
+        throw new UnsupportedOperationException("findFeedback is not implemented.");
+    }
+
     List<DocumentAnswerDetailResponse> findAnswerLogs(long sessionId);
 
     record DocumentScoreRow(int score, int correctCount, int totalCount) {
+    }
+
+    record DocumentFeedbackRow(String summary, String detailText) {
     }
 
     record DocumentQuestionAnswerRow(

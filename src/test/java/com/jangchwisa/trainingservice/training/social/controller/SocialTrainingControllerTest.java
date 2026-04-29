@@ -80,7 +80,7 @@ class SocialTrainingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].scenarioId").value(1))
                 .andExpect(jsonPath("$.data[0].title").value("동료에게 도움 요청하기"))
-                .andExpect(jsonPath("$.data[0].difficulty").value("EASY"));
+                .andExpect(jsonPath("$.data[0].difficulty").value(1));
     }
 
     @Test
@@ -170,12 +170,12 @@ class SocialTrainingControllerTest {
 
         @Override
         public List<SocialScenarioListItemResponse> findActiveScenariosByJobType(SocialJobType jobType) {
-            return List.of(new SocialScenarioListItemResponse(1L, "동료에게 도움 요청하기", "EASY"));
+            return List.of(new SocialScenarioListItemResponse(1L, "동료에게 도움 요청하기", 1));
         }
 
         @Override
         public Optional<SocialScenarioDetailResponse> findActiveScenarioDetail(long scenarioId) {
-            return Optional.of(new SocialScenarioDetailResponse(scenarioId, SocialJobType.OFFICE, "제목", "배경", "상황", "동료", "EASY"));
+            return Optional.of(new SocialScenarioDetailResponse(scenarioId, SocialJobType.OFFICE, "제목", "배경", "상황", "동료", 1));
         }
 
         @Override

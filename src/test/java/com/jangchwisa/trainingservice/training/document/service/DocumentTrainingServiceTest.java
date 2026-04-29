@@ -18,6 +18,7 @@ import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSession
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository;
+import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentFeedbackRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
 import com.jangchwisa.trainingservice.training.feedback.entity.TrainingFeedback;
@@ -131,6 +132,7 @@ class DocumentTrainingServiceTest {
     void returnsDetailAfterOwnershipValidation() {
         ownershipRepository.save(10L, 1L);
         documentRepository.score = Optional.of(new DocumentTrainingRepository.DocumentScoreRow(80, 8, 10));
+        documentRepository.feedback = Optional.of(new DocumentFeedbackRow("Summary", "Detail"));
         documentRepository.answerLogs = List.of(new DocumentAnswerDetailResponse(
                 1L,
                 "What time does work start?",
@@ -245,6 +247,7 @@ class DocumentTrainingServiceTest {
 
         List<DocumentQuestionResponse> questions = List.of();
         Optional<DocumentScoreRow> score = Optional.empty();
+        Optional<DocumentFeedbackRow> feedback = Optional.empty();
         List<DocumentAnswerDetailResponse> answerLogs = List.of();
         List<DocumentQuestionAnswerRow> questionAnswers = List.of();
         List<ScoredDocumentAnswer> savedAnswers = List.of();
@@ -294,6 +297,11 @@ class DocumentTrainingServiceTest {
         @Override
         public Optional<DocumentScoreRow> findScore(long sessionId) {
             return score;
+        }
+
+        @Override
+        public Optional<DocumentFeedbackRow> findFeedback(long sessionId) {
+            return feedback;
         }
 
         @Override

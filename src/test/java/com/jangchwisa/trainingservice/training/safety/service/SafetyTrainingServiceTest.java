@@ -90,7 +90,7 @@ class SafetyTrainingServiceTest {
         assertThat(response.selectedResult().correct()).isTrue();
         assertThat(response.nextScene().sceneId()).isEqualTo(3L);
         assertThat(safetyRepository.savedActionLogs).containsExactly(new SafetyActionLogResponse(1L, 2L, true));
-        assertThat(sessionRepository.sessions.get(20L).currentStep()).isEqualTo(1);
+        assertThat(sessionRepository.sessions.get(20L).currentStep()).isEqualTo(3);
     }
 
     @Test
