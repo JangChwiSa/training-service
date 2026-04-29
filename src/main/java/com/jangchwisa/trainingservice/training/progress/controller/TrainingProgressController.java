@@ -24,13 +24,13 @@ public class TrainingProgressController {
     }
 
     @Operation(
-            summary = "훈련 현황 요약 조회",
-            description = "선택한 훈련 유형의 사용자별 진행 상태와 최근 수행 결과를 조회합니다. type이 없으면 SOCIAL 기준으로 조회합니다."
+            summary = "훈련 수준 조회",
+            description = "Asia/Seoul 기준 이번 달 완료 이력을 바탕으로 선택한 훈련 유형의 수준을 조회합니다. type이 없으면 SOCIAL 기준으로 조회합니다."
     )
     @GetMapping("/api/trainings/progress")
     public ApiResponse<TrainingProgressResponse> getProgress(
             @AuthenticatedUser CurrentUser currentUser,
-            @Parameter(description = "조회할 훈련 유형입니다. SOCIAL, SAFETY, DOCUMENT, FOCUS 중 하나를 입력합니다. 비우면 SOCIAL로 조회합니다.", example = "SOCIAL")
+            @Parameter(description = "조회할 훈련 유형입니다. SOCIAL, SAFETY, DOCUMENT, FOCUS 중 하나이며 비우면 SOCIAL입니다.", example = "SOCIAL")
             @RequestParam(required = false) String type
     ) {
         TrainingType trainingType = parseTrainingType(type);

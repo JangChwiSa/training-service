@@ -2,109 +2,150 @@ package com.jangchwisa.trainingservice.training.progress.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse;
-import com.jangchwisa.trainingservice.training.progress.dto.FocusProgressResponse;
-import com.jangchwisa.trainingservice.training.progress.dto.SafetyProgressResponse;
-import com.jangchwisa.trainingservice.training.progress.dto.SocialProgressResponse;
-import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.dto.TrainingLevelResponse;
+import com.jangchwisa.trainingservice.training.progress.entity.MonthlyTrainingSummaryEntry;
 import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class TrainingProgressServiceTest {
 
+    private static final Clock FIXED_CLOCK = Clock.fixed(
+            Instant.parse("2026-04-29T03:00:00Z"),
+            ZoneId.of("UTC")
+    );
+
     FakeTrainingProgressRepository repository = new FakeTrainingProgressRepository();
-    TrainingProgressService service = new TrainingProgressService(repository);
+    TrainingProgressService service = new TrainingProgressService(repository, FIXED_CLOCK);
 
     @Test
-    void returnsSocialProgress() {
-        repository.socialProgress = Optional.of(new SocialProgressResponse(
-                TrainingType.SOCIAL,
-                10L,
-                85,
-                "좋은 대화 흐름입니다.",
-                3,
-                LocalDateTime.of(2026, 4, 27, 10, 0)
-        ));
+    void returnsSocialLevelFromMonthlyAverageScoreWhenAtLeastThreeCompletionsExist() {
+        repository.entries = List.of(
+                entry(70, null, null, null),
+                entry(80, null, null, null),
+                entry(90, null, null, null)
+        );
 
-        TrainingProgressResponse response = service.getProgress(1L, TrainingType.SOCIAL);
+        TrainingLevelResponse response = (TrainingLevelResponse) service.getProgress(1L, TrainingType.SOCIAL);
 
-        assertThat(response).isEqualTo(repository.socialProgress.orElseThrow());
+        assertThat(response.level()).isEqualTo(4);
+        assertThat(response.completedCount()).isEqualTo(3);
+        assertThat(response.minRequiredCount()).isEqualTo(3);
+        assertThat(response.reason()).isNull();
+        assertThat(response.metrics()).containsEntry("averageScore", BigDecimal.valueOf(80.0));
+        assertThat(response.metrics()).containsEntry("monthlyCompletedCount", 3);
     }
 
     @Test
-    void returnsDefaultSocialProgressWhenDataDoesNotExist() {
-        TrainingProgressResponse response = service.getProgress(1L, TrainingType.SOCIAL);
+    void returnsNullSocialLevelWhenMonthlyCompletionsAreInsufficient() {
+        repository.entries = List.of(
+                entry(95, null, null, null),
+                entry(95, null, null, null)
+        );
 
-        assertThat(response).isEqualTo(new SocialProgressResponse(TrainingType.SOCIAL, null, null, null, 0, null));
+        TrainingLevelResponse response = (TrainingLevelResponse) service.getProgress(1L, TrainingType.SOCIAL);
+
+        assertThat(response.level()).isNull();
+        assertThat(response.reason()).isEqualTo("INSUFFICIENT_COMPLETIONS");
+        assertThat(response.completedCount()).isEqualTo(2);
     }
 
     @Test
-    void returnsDefaultSafetyProgressWhenDataDoesNotExist() {
-        TrainingProgressResponse response = service.getProgress(1L, TrainingType.SAFETY);
+    void returnsHighestDocumentLevelFromMonthlyCompletedSessionSubType() {
+        repository.entries = List.of(
+                entry(70, null, null, "LEVEL_2"),
+                entry(90, null, null, "LEVEL_5"),
+                entry(80, null, null, "LEVEL_3")
+        );
 
-        assertThat(response).isEqualTo(new SafetyProgressResponse(TrainingType.SAFETY, null, 0, 0, 0, null));
+        TrainingLevelResponse response = (TrainingLevelResponse) service.getProgress(1L, TrainingType.DOCUMENT);
+
+        assertThat(response.level()).isEqualTo(5);
+        assertThat(response.metrics()).containsEntry("highestCompletedLevel", 5);
     }
 
     @Test
-    void returnsDefaultDocumentProgressWhenDataDoesNotExist() {
-        TrainingProgressResponse response = service.getProgress(1L, TrainingType.DOCUMENT);
+    void returnsHighestFocusPlayedLevelFromMonthlySummaries() {
+        repository.entries = List.of(
+                entry(70, null, 2, null),
+                entry(90, null, 4, null),
+                entry(80, null, 3, null)
+        );
 
-        assertThat(response).isEqualTo(new DocumentProgressResponse(TrainingType.DOCUMENT, null, 0, 0, null, 0, null));
+        TrainingLevelResponse response = (TrainingLevelResponse) service.getProgress(1L, TrainingType.FOCUS);
+
+        assertThat(response.level()).isEqualTo(4);
+        assertThat(response.metrics()).containsEntry("highestPlayedLevel", 4);
     }
 
     @Test
-    void returnsDefaultFocusProgressWhenDataDoesNotExist() {
-        TrainingProgressResponse response = service.getProgress(1L, TrainingType.FOCUS);
+    void returnsSafetyLevelUsingAverageScoreCappedByCoveredCategoryCount() {
+        repository.entries = List.of(
+                entry(95, "COMMUTE_SAFETY", null, null),
+                entry(95, "INFECTIOUS_DISEASE", null, null),
+                entry(95, "COMMUTE_SAFETY", null, null)
+        );
 
-        assertThat(response).isEqualTo(new FocusProgressResponse(TrainingType.FOCUS, 1, 1, null, null, null, null));
+        TrainingLevelResponse response = (TrainingLevelResponse) service.getProgress(1L, TrainingType.SAFETY);
+
+        assertThat(response.level()).isEqualTo(4);
+        assertThat(response.metrics()).containsEntry("averageScore", BigDecimal.valueOf(95.0));
+        assertThat(response.metrics()).containsEntry("coveredCategoryCount", 2);
+        assertThat(response.metrics()).containsEntry("coveredCategories", List.of("COMMUTE_SAFETY", "INFECTIOUS_DISEASE"));
     }
 
     @Test
-    void returnsFocusProgress() {
-        repository.focusProgress = Optional.of(new FocusProgressResponse(
-                TrainingType.FOCUS,
-                3,
-                4,
-                2,
-                BigDecimal.valueOf(92.5),
-                820,
-                LocalDateTime.of(2026, 4, 27, 11, 0)
-        ));
+    void returnsNullLevelWhenMonthlyCompletionDoesNotExist() {
+        TrainingLevelResponse response = (TrainingLevelResponse) service.getProgress(1L, TrainingType.DOCUMENT);
 
-        TrainingProgressResponse response = service.getProgress(1L, TrainingType.FOCUS);
+        assertThat(response.level()).isNull();
+        assertThat(response.reason()).isEqualTo("NO_MONTHLY_COMPLETION");
+        assertThat(response.periodStart()).isEqualTo(LocalDateTime.of(2026, 4, 1, 0, 0));
+        assertThat(response.periodEnd()).isEqualTo(LocalDateTime.of(2026, 5, 1, 0, 0));
+        assertThat(response.timezone()).isEqualTo("Asia/Seoul");
+    }
 
-        assertThat(response).isEqualTo(repository.focusProgress.orElseThrow());
+    @Test
+    void queriesCurrentCalendarMonthInAsiaSeoul() {
+        service.getProgress(12L, TrainingType.FOCUS);
+
+        assertThat(repository.userId).isEqualTo(12L);
+        assertThat(repository.trainingType).isEqualTo(TrainingType.FOCUS);
+        assertThat(repository.periodStart).isEqualTo(LocalDateTime.of(2026, 4, 1, 0, 0));
+        assertThat(repository.periodEnd).isEqualTo(LocalDateTime.of(2026, 5, 1, 0, 0));
+    }
+
+    private static MonthlyTrainingSummaryEntry entry(Integer score, String category, Integer playedLevel, String subType) {
+        return new MonthlyTrainingSummaryEntry(score, category, playedLevel, subType);
     }
 
     static class FakeTrainingProgressRepository implements TrainingProgressRepository {
 
-        Optional<SocialProgressResponse> socialProgress = Optional.empty();
-        Optional<SafetyProgressResponse> safetyProgress = Optional.empty();
-        Optional<DocumentProgressResponse> documentProgress = Optional.empty();
-        Optional<FocusProgressResponse> focusProgress = Optional.empty();
+        List<MonthlyTrainingSummaryEntry> entries = new ArrayList<>();
+        long userId;
+        TrainingType trainingType;
+        LocalDateTime periodStart;
+        LocalDateTime periodEnd;
 
         @Override
-        public Optional<SocialProgressResponse> findSocialProgress(long userId) {
-            return socialProgress;
-        }
-
-        @Override
-        public Optional<SafetyProgressResponse> findSafetyProgress(long userId) {
-            return safetyProgress;
-        }
-
-        @Override
-        public Optional<DocumentProgressResponse> findDocumentProgress(long userId) {
-            return documentProgress;
-        }
-
-        @Override
-        public Optional<FocusProgressResponse> findFocusProgress(long userId) {
-            return focusProgress;
+        public List<MonthlyTrainingSummaryEntry> findMonthlyCompletedSummaries(
+                long userId,
+                TrainingType trainingType,
+                LocalDateTime periodStart,
+                LocalDateTime periodEnd
+        ) {
+            this.userId = userId;
+            this.trainingType = trainingType;
+            this.periodStart = periodStart;
+            this.periodEnd = periodEnd;
+            return entries;
         }
     }
 }

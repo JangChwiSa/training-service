@@ -20,7 +20,7 @@ import com.jangchwisa.trainingservice.training.focus.dto.CompleteFocusSessionReq
 import com.jangchwisa.trainingservice.training.focus.dto.CompleteFocusSessionResponse;
 import com.jangchwisa.trainingservice.training.focus.service.FocusTrainingService;
 import com.jangchwisa.trainingservice.training.progress.controller.TrainingProgressController;
-import com.jangchwisa.trainingservice.training.progress.dto.SocialProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.dto.TrainingLevelResponse;
 import com.jangchwisa.trainingservice.training.progress.service.TrainingProgressService;
 import com.jangchwisa.trainingservice.training.safety.controller.SafetyTrainingController;
 import com.jangchwisa.trainingservice.training.safety.dto.CompleteSafetySessionResponse;
@@ -42,6 +42,7 @@ import com.jangchwisa.trainingservice.training.summary.service.TrainingSessionLi
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
@@ -53,13 +54,20 @@ class ApiContractTest {
     @Test
     void progressApiMatchesContractAndUsesTrustedHeaderUserId() throws Exception {
         TrainingProgressService service = mock(TrainingProgressService.class);
-        when(service.getProgress(7L, TrainingType.SOCIAL)).thenReturn(new SocialProgressResponse(
+        when(service.getProgress(7L, TrainingType.SOCIAL)).thenReturn(new TrainingLevelResponse(
                 TrainingType.SOCIAL,
-                10L,
-                85,
-                "Good response",
+                4,
+                LocalDateTime.of(2026, 4, 1, 0, 0),
+                LocalDateTime.of(2026, 5, 1, 0, 0),
+                "Asia/Seoul",
                 3,
-                LocalDateTime.of(2026, 4, 27, 10, 0)
+                3,
+                "MONTHLY_COMPLETED_SUMMARIES",
+                null,
+                Map.of(
+                        "averageScore", BigDecimal.valueOf(80.0),
+                        "monthlyCompletedCount", 3
+                )
         ));
 
         mockMvc(new TrainingProgressController(service))
@@ -70,11 +78,14 @@ class ApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.trainingType").value("SOCIAL"))
-                .andExpect(jsonPath("$.data.recentSessionId").value(10))
-                .andExpect(jsonPath("$.data.recentScore").value(85))
-                .andExpect(jsonPath("$.data.recentFeedbackSummary").value("Good response"))
+                .andExpect(jsonPath("$.data.level").value(4))
+                .andExpect(jsonPath("$.data.periodStart").value("2026-04-01T00:00:00"))
+                .andExpect(jsonPath("$.data.periodEnd").value("2026-05-01T00:00:00"))
+                .andExpect(jsonPath("$.data.timezone").value("Asia/Seoul"))
                 .andExpect(jsonPath("$.data.completedCount").value(3))
-                .andExpect(jsonPath("$.data.lastCompletedAt").value("2026-04-27T10:00:00"));
+                .andExpect(jsonPath("$.data.minRequiredCount").value(3))
+                .andExpect(jsonPath("$.data.basis").value("MONTHLY_COMPLETED_SUMMARIES"))
+                .andExpect(jsonPath("$.data.metrics.averageScore").value(80.0));
 
         verify(service).getProgress(7L, TrainingType.SOCIAL);
     }

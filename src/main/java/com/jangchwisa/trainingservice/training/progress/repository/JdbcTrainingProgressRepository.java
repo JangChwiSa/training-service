@@ -4,9 +4,11 @@ import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResp
 import com.jangchwisa.trainingservice.training.progress.dto.FocusProgressResponse;
 import com.jangchwisa.trainingservice.training.progress.dto.SafetyProgressResponse;
 import com.jangchwisa.trainingservice.training.progress.dto.SocialProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.entity.MonthlyTrainingSummaryEntry;
 import com.jangchwisa.trainingservice.training.progress.entity.TrainingProgressCompletion;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -194,6 +196,31 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
                     Timestamp.valueOf(completion.completedAt())
             );
         }
+    }
+
+    @Override
+    public List<MonthlyTrainingSummaryEntry> findMonthlyCompletedSummaries(
+            long userId,
+            TrainingType trainingType,
+            LocalDateTime periodStart,
+            LocalDateTime periodEnd
+    ) {
+        String sql = """
+                SELECT s.score, s.category, s.played_level, ts.sub_type
+                FROM training_session_summaries s
+                JOIN training_sessions ts ON ts.session_id = s.session_id
+                WHERE s.user_id = ?
+                  AND s.training_type = ?
+                  AND s.completed_at >= ?
+                  AND s.completed_at < ?
+                ORDER BY s.completed_at ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new MonthlyTrainingSummaryEntry(
+                nullableInteger(resultSet.getObject("score")),
+                resultSet.getString("category"),
+                nullableInteger(resultSet.getObject("played_level")),
+                resultSet.getString("sub_type")
+        ), userId, trainingType.name(), Timestamp.valueOf(periodStart), Timestamp.valueOf(periodEnd));
     }
 
     @Override

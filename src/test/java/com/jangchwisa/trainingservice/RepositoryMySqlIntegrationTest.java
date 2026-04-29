@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jangchwisa.trainingservice.event.outbox.OutboxEvent;
 import com.jangchwisa.trainingservice.event.outbox.OutboxEventRepository;
+import com.jangchwisa.trainingservice.training.progress.entity.MonthlyTrainingSummaryEntry;
+import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSessionStatus;
@@ -29,6 +31,9 @@ class RepositoryMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     TrainingSessionSummaryRepository trainingSessionSummaryRepository;
+
+    @Autowired
+    TrainingProgressRepository trainingProgressRepository;
 
     @Autowired
     OutboxEventRepository outboxEventRepository;
@@ -113,6 +118,54 @@ class RepositoryMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void progressRepositoryFindsMonthlySummariesWithinInclusiveStartAndExclusiveEnd() {
+        TrainingSession beforeMonth = trainingSessionRepository.save(TrainingSession.start(
+                1L,
+                TrainingType.SOCIAL,
+                "OFFICE",
+                11L,
+                STARTED_AT
+        ));
+        TrainingSession insideMonth = trainingSessionRepository.save(TrainingSession.start(
+                1L,
+                TrainingType.SOCIAL,
+                "OFFICE",
+                12L,
+                STARTED_AT
+        ));
+        TrainingSession atPeriodEnd = trainingSessionRepository.save(TrainingSession.start(
+                1L,
+                TrainingType.SOCIAL,
+                "OFFICE",
+                13L,
+                STARTED_AT
+        ));
+        trainingSessionSummaryRepository.save(socialSummary(
+                beforeMonth.sessionId(),
+                LocalDateTime.of(2026, 3, 31, 23, 59, 59)
+        ));
+        trainingSessionSummaryRepository.save(socialSummary(
+                insideMonth.sessionId(),
+                LocalDateTime.of(2026, 4, 1, 0, 0)
+        ));
+        trainingSessionSummaryRepository.save(socialSummary(
+                atPeriodEnd.sessionId(),
+                LocalDateTime.of(2026, 5, 1, 0, 0)
+        ));
+
+        List<MonthlyTrainingSummaryEntry> summaries = trainingProgressRepository.findMonthlyCompletedSummaries(
+                1L,
+                TrainingType.SOCIAL,
+                LocalDateTime.of(2026, 4, 1, 0, 0),
+                LocalDateTime.of(2026, 5, 1, 0, 0)
+        );
+
+        assertThat(summaries).hasSize(1);
+        assertThat(summaries.getFirst().score()).isEqualTo(85);
+        assertThat(summaries.getFirst().sessionSubType()).isEqualTo("OFFICE");
+    }
+
+    @Test
     void outboxRepositoryFindsDueEventsAndTransitionsStatus() {
         TrainingSession session = trainingSessionRepository.save(TrainingSession.start(
                 1L,
@@ -160,6 +213,29 @@ class RepositoryMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
                 10,
                 BigDecimal.valueOf(80),
                 2,
+                null,
+                null,
+                completedAt,
+                completedAt
+        );
+    }
+
+    private TrainingSessionSummary socialSummary(long sessionId, LocalDateTime completedAt) {
+        return new TrainingSessionSummary(
+                sessionId,
+                1L,
+                TrainingType.SOCIAL,
+                11L,
+                "Social scenario",
+                null,
+                "Social training",
+                85,
+                "Social summary",
+                "Good response.",
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 completedAt,
