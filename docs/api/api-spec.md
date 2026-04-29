@@ -796,8 +796,8 @@ document_questions
   "sessionId": 30,
   "score": 80,
   "answerSummary": {
-    "correctCount": 8,
-    "totalCount": 10
+    "correctCount": 4,
+    "totalCount": 5
   },
   "answers": [
     {
