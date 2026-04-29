@@ -2,7 +2,8 @@
 
 > 목적: 훈련 콘텐츠 원본 데이터를 DB seed로 넣기 위한 정리 문서입니다.  
 > 범위: 사용자 수행 결과, 세션, 로그, 점수, 피드백 데이터는 포함하지 않습니다.  
-> 대상 테이블: `social_scenarios`, `safety_scenarios`, `safety_scenes`, `safety_choices`, `document_questions`, `document_question_choices`
+> 현재 호환 대상 테이블: `social_scenarios`, `safety_scenarios`, `safety_scenes`, `safety_choices`, `document_questions`
+> 확장 목표 대상 테이블: `document_question_choices` 및 콘텐츠 관리용 보강 컬럼
 
 ---
 
@@ -22,17 +23,28 @@
 - `training_feedbacks`
 - `training_session_summaries`
 
-### 0.2 Seed 코드 사용 기준
+### 0.2 현재 호환 seed와 확장 목표 seed 분리
+
+이 문서는 두 층으로 관리합니다.
+
+1. **현재 호환 seed**
+   - 현재 Flyway 마이그레이션으로 생성되는 DB 스키마와 현재 API/Repository 구현에 바로 넣을 수 있는 데이터입니다.
+   - insert 대상 컬럼은 현재 DB에 존재하는 컬럼으로 제한합니다.
+   - `seed_code` 등 매핑용 값은 insert script 내부 변수나 문서 식별자로만 사용합니다.
+2. **확장 목표 seed**
+   - 콘텐츠 운영과 사용자 경험 개선을 위해 향후 DB/API/Repository 확장 후 사용할 데이터입니다.
+   - `seed_code`, 사회성 평가 기준, 안전 선택 결과 문구, 문서 객관식 선택지 등을 포함합니다.
+
+### 0.3 Seed 코드 사용 기준
 
 아래 문서의 `seed_code`는 실제 DB의 PK가 아니라, seed 데이터를 사람이 관리하기 쉽게 붙인 식별자입니다.
 
 실제 DB 저장 시에는 다음 중 하나를 선택합니다.
 
-1. `seed_code` 컬럼을 별도로 추가해서 관리한다.
-2. seed insert script 내부에서 `seed_code -> UUID`를 매핑한다.
-3. 운영 DB에는 UUID만 저장하고, seed 파일에서만 `seed_code`를 관리한다.
+1. 현재 호환 seed에서는 seed insert script 내부에서 `seed_code -> BIGINT AUTO_INCREMENT id`를 매핑한다.
+2. 확장 후에는 `seed_code` 컬럼을 별도로 추가해서 콘텐츠 natural key로 관리한다.
 
-추천은 **1번**입니다.
+현재 서비스는 BIGINT PK를 사용하므로, 당장 PK를 UUID로 바꾸지 않습니다.
 
 ---
 
@@ -44,21 +56,27 @@
 social_scenarios
 ```
 
-## 1.2 추천 컬럼 구조
+## 1.2 현재 DB insert 대상 컬럼
 
 ```text
-scenario_id           -- UUID PK
-seed_code             -- 사람이 관리하기 위한 seed 식별자, 예: SOC-OFF-AMB-001
+scenario_id           -- BIGINT AUTO_INCREMENT PK
 job_type              -- OFFICE, LABOR
-category_code         -- AMBIGUOUS_INSTRUCTION, MISTAKE_REPORT 등
 title                 -- 시나리오 제목
 background_text       -- 상황 카테고리 설명
 situation_text        -- 실제 사용자에게 제시할 상황 문장
 character_info        -- 사수님, 팀장님, 동료, 관리자님 등
-difficulty            -- LEVEL_1 등
-evaluation_point      -- 채점 포인트
-example_answer        -- 모범 답변, 추후 보강 가능
+difficulty            -- 현재 구현은 숫자 문자열, 예: "1"
 is_active             -- 사용 여부
+```
+
+## 1.2.1 확장 목표 컬럼
+
+```text
+seed_code             -- 사람이 관리하기 위한 seed 식별자, 예: SOC-OFF-AMB-001
+category_code         -- AMBIGUOUS_INSTRUCTION, MISTAKE_REPORT 등
+situation_order       -- 카테고리 내 노출 순서
+evaluation_point      -- AI 평가 또는 룰 기반 평가 기준
+example_answer        -- 모범 답변 또는 평가 참고 답변
 ```
 
 ---
@@ -78,13 +96,15 @@ is_active             -- 사용 여부
 
 ## 1.4 사회성 훈련 시나리오 목록
 
+아래 표는 seed 원본 관리 표입니다. 현재 DB insert 시에는 `job_type`, `title`, `background_text`, `situation_text`, `character_info`, `difficulty`, `is_active`만 저장하고, 나머지 컬럼은 확장 목표 또는 seed script 매핑용 메타데이터로 사용합니다.
+
 ### OFFICE / AMBIGUOUS_INSTRUCTION
 
 | seed_code | job_type | category_code | situation_order | title | situation_text | character_info | difficulty | evaluation_point | example_answer |
 |---|---|---:|---:|---|---|---|---|---|---|
-| SOC-OFF-AMB-001 | OFFICE | AMBIGUOUS_INSTRUCTION | 1 | 복사 수량이 모호한 지시를 받았을 때 | 사수님이 서류를 가져와 책상에 툭 내려놓으며 "이거 넉넉히 복사해서 회의실에 갖다 둬요."라고 말하고 급하게 나갔습니다. 회의 인원이 몇 명인지 몰라 몇 장을 복사해야 할지 당황스러운 상황입니다. 어떻게 대처해야 할까요? | 사수님 | LEVEL_1 | 구체적인 숫자, 예를 들어 10장 또는 20장을 언급하며 수량을 확인했는가? | 사수님, 회의 인원이 몇 명인지 몰라서요. 몇 부 정도 복사하면 될까요? |
-| SOC-OFF-AMB-002 | OFFICE | AMBIGUOUS_INSTRUCTION | 2 | 전화 전달에 필요한 연락처가 빠졌을 때 | 팀장님이 외근 중인데 사무실로 전화가 왔습니다. 상대방이 "나 박 사장인데, 팀장 오면 전화하라고 해요." 말하고 끊으려 합니다. 연락처를 모르면 팀장님께 보고할 수 없는 상황입니다. 어떻게 말해야 할까요? | 전화 상대방, 팀장님 | LEVEL_1 | 상대방의 정확한 성함과 다시 연락드릴 번호를 정중하게 요청했는가? | 죄송하지만 팀장님께 정확히 전달드릴 수 있도록 성함과 연락처를 한 번만 알려주실 수 있을까요? |
-| SOC-OFF-AMB-003 | OFFICE | AMBIGUOUS_INSTRUCTION | 3 | 음료 구매 지시가 구체적이지 않을 때 | 대리님이 법인카드를 주며 "손님들 오시니까 탕비실에 음료수 좀 종류별로 사다 채워놔요. 센스 있게 알죠?"라고 합니다. 어떤 음료를 몇 개나 사야 할지 막막한 상황입니다. 뭐라고 물어봐야 할까요? | 대리님 | LEVEL_1 | 음료의 종류나 대략적인 구매 개수를 구체적으로 되물었는가? | 대리님, 커피나 주스처럼 어떤 종류를 몇 개 정도 사면 좋을까요? |
+| SOC-OFF-AMB-001 | OFFICE | AMBIGUOUS_INSTRUCTION | 1 | 복사 수량이 모호한 지시를 받았을 때 | 사수님이 서류를 가져와 책상에 툭 내려놓으며 "이거 넉넉히 복사해서 회의실에 갖다 둬요."라고 말하고 급하게 나갔습니다. 회의 인원이 몇 명인지 몰라 몇 장을 복사해야 할지 당황스러운 상황입니다. 어떻게 대처해야 할까요? | 사수님 | 1 | 구체적인 숫자, 예를 들어 10장 또는 20장을 언급하며 수량을 확인했는가? | 사수님, 회의 인원이 몇 명인지 몰라서요. 몇 부 정도 복사하면 될까요? |
+| SOC-OFF-AMB-002 | OFFICE | AMBIGUOUS_INSTRUCTION | 2 | 전화 전달에 필요한 연락처가 빠졌을 때 | 팀장님이 외근 중인데 사무실로 전화가 왔습니다. 상대방이 "나 박 사장인데, 팀장 오면 전화하라고 해요." 말하고 끊으려 합니다. 연락처를 모르면 팀장님께 보고할 수 없는 상황입니다. 어떻게 말해야 할까요? | 전화 상대방, 팀장님 | 1 | 상대방의 정확한 성함과 다시 연락드릴 번호를 정중하게 요청했는가? | 죄송하지만 팀장님께 정확히 전달드릴 수 있도록 성함과 연락처를 한 번만 알려주실 수 있을까요? |
+| SOC-OFF-AMB-003 | OFFICE | AMBIGUOUS_INSTRUCTION | 3 | 음료 구매 지시가 구체적이지 않을 때 | 대리님이 법인카드를 주며 "손님들 오시니까 탕비실에 음료수 좀 종류별로 사다 채워놔요. 센스 있게 알죠?"라고 합니다. 어떤 음료를 몇 개나 사야 할지 막막한 상황입니다. 뭐라고 물어봐야 할까요? | 대리님 | 1 | 음료의 종류나 대략적인 구매 개수를 구체적으로 되물었는가? | 대리님, 커피나 주스처럼 어떤 종류를 몇 개 정도 사면 좋을까요? |
 
 ---
 
@@ -92,9 +112,9 @@ is_active             -- 사용 여부
 
 | seed_code | job_type | category_code | situation_order | title | situation_text | character_info | difficulty | evaluation_point | example_answer |
 |---|---|---:|---:|---|---|---|---|---|---|
-| SOC-OFF-MIS-001 | OFFICE | MISTAKE_REPORT | 1 | 영수증 원본을 실수로 파쇄했을 때 | 파쇄기 옆에 놓인 종이 뭉치를 당연히 버리는 건 줄 알고 다 갈아버렸습니다. 그런데 알고 보니 사수님이 점심시간 직전에 정리해둔 영수증 원본들이었습니다. 이미 가루가 된 상황에서 어떻게 보고해야 할까요? | 사수님 | LEVEL_1 | "죄송합니다"라고 즉시 사과하고, 어떤 서류를 파쇄했는지 사실대로 말했는가? | 죄송합니다. 파쇄기 옆에 있던 영수증 원본을 버리는 서류로 착각해서 파쇄했습니다. |
-| SOC-OFF-MIS-002 | OFFICE | MISTAKE_REPORT | 2 | 회의실 예약을 깜빡했을 때 | 오후 2시 회의를 위해 회의실에 갔더니 이미 다른 팀이 회의 중입니다. 알고 보니 내가 예약 시스템에 등록하는 걸 깜빡해서 우리 팀원들이 들어가지 못하고 있습니다. 팀장님께 이 상황을 어떻게 말해야 할까요? | 팀장님 | LEVEL_1 | 자신의 실수를 인정하고, 즉시 빈 회의실을 찾아보겠다는 대안을 제시했는가? | 팀장님, 제가 회의실 예약을 깜빡했습니다. 죄송합니다. 바로 사용 가능한 빈 회의실을 찾아보겠습니다. |
-| SOC-OFF-MIS-003 | OFFICE | MISTAKE_REPORT | 3 | 지하철 고장으로 지각하게 되었을 때 | 출근하는 지하철이 터널 안에서 고장으로 멈췄습니다. 안내 방송에서는 "출발이 20분 이상 지연될 예정"이라고 합니다. 9시 정각까지 출근하기 불가능한 상황에서 사수님께 어떻게 연락해야 할까요? | 사수님 | LEVEL_1 | 지각 사유와 예상 도착 시간을 명확히 전달했는가? | 사수님, 지하철 고장으로 20분 이상 지연될 예정입니다. 도착 예상 시간은 확인되는 대로 다시 말씀드리겠습니다. |
+| SOC-OFF-MIS-001 | OFFICE | MISTAKE_REPORT | 1 | 영수증 원본을 실수로 파쇄했을 때 | 파쇄기 옆에 놓인 종이 뭉치를 당연히 버리는 건 줄 알고 다 갈아버렸습니다. 그런데 알고 보니 사수님이 점심시간 직전에 정리해둔 영수증 원본들이었습니다. 이미 가루가 된 상황에서 어떻게 보고해야 할까요? | 사수님 | 1 | "죄송합니다"라고 즉시 사과하고, 어떤 서류를 파쇄했는지 사실대로 말했는가? | 죄송합니다. 파쇄기 옆에 있던 영수증 원본을 버리는 서류로 착각해서 파쇄했습니다. |
+| SOC-OFF-MIS-002 | OFFICE | MISTAKE_REPORT | 2 | 회의실 예약을 깜빡했을 때 | 오후 2시 회의를 위해 회의실에 갔더니 이미 다른 팀이 회의 중입니다. 알고 보니 내가 예약 시스템에 등록하는 걸 깜빡해서 우리 팀원들이 들어가지 못하고 있습니다. 팀장님께 이 상황을 어떻게 말해야 할까요? | 팀장님 | 1 | 자신의 실수를 인정하고, 즉시 빈 회의실을 찾아보겠다는 대안을 제시했는가? | 팀장님, 제가 회의실 예약을 깜빡했습니다. 죄송합니다. 바로 사용 가능한 빈 회의실을 찾아보겠습니다. |
+| SOC-OFF-MIS-003 | OFFICE | MISTAKE_REPORT | 3 | 지하철 고장으로 지각하게 되었을 때 | 출근하는 지하철이 터널 안에서 고장으로 멈췄습니다. 안내 방송에서는 "출발이 20분 이상 지연될 예정"이라고 합니다. 9시 정각까지 출근하기 불가능한 상황에서 사수님께 어떻게 연락해야 할까요? | 사수님 | 1 | 지각 사유와 예상 도착 시간을 명확히 전달했는가? | 사수님, 지하철 고장으로 20분 이상 지연될 예정입니다. 도착 예상 시간은 확인되는 대로 다시 말씀드리겠습니다. |
 
 ---
 
@@ -102,9 +122,9 @@ is_active             -- 사용 여부
 
 | seed_code | job_type | category_code | situation_order | title | situation_text | character_info | difficulty | evaluation_point | example_answer |
 |---|---|---:|---:|---|---|---|---|---|---|
-| SOC-OFF-REF-001 | OFFICE | REFUSAL | 1 | 내 업무가 아닌 개인적인 부탁을 받았을 때 | 옆자리 선배가 자기 책상에 쌓인 빈 박스 더미를 내 밀차에 툭 던지며 "OO 씨는 이제 할 일 없지? 나 바쁘니까 이것도 가져가서 분리수거장에 좀 버리고 와요."라고 합니다. 원래 내 업무가 아닌데 당연하다는 듯 시키는 상황에서 뭐라고 대답해야 할까요? | 선배 | LEVEL_1 | 현재 내가 해야 할 업무가 있음을 밝히고, 개인적인 부탁은 어렵다고 정중히 거절했는가? | 죄송하지만 지금 제가 맡은 업무가 있어서 바로 도와드리기는 어렵습니다. |
-| SOC-OFF-REF-002 | OFFICE | REFUSAL | 2 | 불편한 사생활 질문을 받았을 때 | 점심시간에 선배가 "OO 씨는 장애가 있어서 취직하기 편했겠어. 수당도 나오죠? 한 달에 얼마 받아요?"라며 기분 나쁜 사생활 질문을 합니다. 대답하고 싶지 않을 때 어떻게 상황을 넘겨야 할까요? | 선배 | LEVEL_1 | "그건 개인적인 일이라 말씀드리기 곤란합니다"처럼 정중하지만 명확하게 거절했는가? | 그건 개인적인 일이라 말씀드리기 곤란합니다. |
-| SOC-OFF-REF-003 | OFFICE | REFUSAL | 3 | 위험한 작업 방식을 권유받았을 때 | 기계 작업을 하고 있는데 동료가 다가와 "야, 이거 그냥 손으로 대충 밀어 넣어. 기계 안 멈춰도 돼. 언제 일일이 끄고 해?"라며 위험한 방식을 권유합니다. 규칙대로 하지 않으면 동료가 나를 답답해할까 봐 걱정되는 상황입니다. 어떻게 말해야 할까요? | 동료 | LEVEL_1 | 규칙대로 기계를 멈추고 하겠다고 하거나, 다칠 수 있어 위험하다고 안전 원칙을 고수했는가? | 그렇게 하면 다칠 수 있어서 위험해요. 규칙대로 기계를 멈추고 하겠습니다. |
+| SOC-OFF-REF-001 | OFFICE | REFUSAL | 1 | 내 업무가 아닌 개인적인 부탁을 받았을 때 | 옆자리 선배가 자기 책상에 쌓인 빈 박스 더미를 내 밀차에 툭 던지며 "OO 씨는 이제 할 일 없지? 나 바쁘니까 이것도 가져가서 분리수거장에 좀 버리고 와요."라고 합니다. 원래 내 업무가 아닌데 당연하다는 듯 시키는 상황에서 뭐라고 대답해야 할까요? | 선배 | 1 | 현재 내가 해야 할 업무가 있음을 밝히고, 개인적인 부탁은 어렵다고 정중히 거절했는가? | 죄송하지만 지금 제가 맡은 업무가 있어서 바로 도와드리기는 어렵습니다. |
+| SOC-OFF-REF-002 | OFFICE | REFUSAL | 2 | 불편한 사생활 질문을 받았을 때 | 점심시간에 선배가 "OO 씨는 장애가 있어서 취직하기 편했겠어. 수당도 나오죠? 한 달에 얼마 받아요?"라며 기분 나쁜 사생활 질문을 합니다. 대답하고 싶지 않을 때 어떻게 상황을 넘겨야 할까요? | 선배 | 1 | "그건 개인적인 일이라 말씀드리기 곤란합니다"처럼 정중하지만 명확하게 거절했는가? | 그건 개인적인 일이라 말씀드리기 곤란합니다. |
+| SOC-OFF-REF-003 | OFFICE | REFUSAL | 3 | 위험한 작업 방식을 권유받았을 때 | 기계 작업을 하고 있는데 동료가 다가와 "야, 이거 그냥 손으로 대충 밀어 넣어. 기계 안 멈춰도 돼. 언제 일일이 끄고 해?"라며 위험한 방식을 권유합니다. 규칙대로 하지 않으면 동료가 나를 답답해할까 봐 걱정되는 상황입니다. 어떻게 말해야 할까요? | 동료 | 1 | 규칙대로 기계를 멈추고 하겠다고 하거나, 다칠 수 있어 위험하다고 안전 원칙을 고수했는가? | 그렇게 하면 다칠 수 있어서 위험해요. 규칙대로 기계를 멈추고 하겠습니다. |
 
 ---
 
@@ -112,9 +132,9 @@ is_active             -- 사용 여부
 
 | seed_code | job_type | category_code | situation_order | title | situation_text | character_info | difficulty | evaluation_point | example_answer |
 |---|---|---:|---:|---|---|---|---|---|---|
-| SOC-LAB-FBK-001 | LABOR | FEEDBACK_ACCEPTANCE | 1 | 청소 상태를 지적받았을 때 | 화장실 청소를 열심히 마쳤는데 관리자님이 오더니 "여기 구석에 머리카락 그대로잖아요! 눈에 보이는 것만 치울 거예요?"라며 사람들 앞에서 크게 화를 냅니다. 너무 속상하지만 일을 마무리하려면 뭐라고 대답해야 할까요? | 관리자님 | LEVEL_1 | 변명하기보다 지적된 곳을 확인하고 "즉시 다시 청소하겠습니다"라고 답했는가? | 네, 확인했습니다. 바로 다시 청소하겠습니다. |
-| SOC-LAB-FBK-002 | LABOR | FEEDBACK_ACCEPTANCE | 2 | 작업 속도를 지적받았을 때 | 물류 박스를 접고 있는데 반장님이 오셔서 "OO 씨는 손이 너무 느려요. 옆 사람은 벌써 두 박스 다 채웠는데 언제 끝낼 거야?"라며 속도를 지적합니다. 마음이 급해지는 상황에서 뭐라고 말해야 할까요? | 반장님 | LEVEL_1 | 지적을 수용하고 "조금 더 속도를 내보겠습니다"라고 의지를 표현했는가? | 네, 알겠습니다. 조금 더 속도를 내보겠습니다. |
-| SOC-LAB-FBK-003 | LABOR | FEEDBACK_ACCEPTANCE | 3 | 안전모 착용을 지적받았을 때 | 작업장이 너무 더워서 안전모를 잠깐 벗고 땀을 닦고 있었습니다. 그때 관리자님이 나타나 "안전 규칙 몰라요? 사고 나면 책임질 거야? 당장 써요!"라고 무섭게 지적합니다. 뭐라고 답변해야 할까요? | 관리자님 | LEVEL_1 | 규칙 위반을 인정하고 즉시 안전모를 착용하며 알겠다고 답했는가? | 죄송합니다. 바로 안전모를 착용하겠습니다. |
+| SOC-LAB-FBK-001 | LABOR | FEEDBACK_ACCEPTANCE | 1 | 청소 상태를 지적받았을 때 | 화장실 청소를 열심히 마쳤는데 관리자님이 오더니 "여기 구석에 머리카락 그대로잖아요! 눈에 보이는 것만 치울 거예요?"라며 사람들 앞에서 크게 화를 냅니다. 너무 속상하지만 일을 마무리하려면 뭐라고 대답해야 할까요? | 관리자님 | 1 | 변명하기보다 지적된 곳을 확인하고 "즉시 다시 청소하겠습니다"라고 답했는가? | 네, 확인했습니다. 바로 다시 청소하겠습니다. |
+| SOC-LAB-FBK-002 | LABOR | FEEDBACK_ACCEPTANCE | 2 | 작업 속도를 지적받았을 때 | 물류 박스를 접고 있는데 반장님이 오셔서 "OO 씨는 손이 너무 느려요. 옆 사람은 벌써 두 박스 다 채웠는데 언제 끝낼 거야?"라며 속도를 지적합니다. 마음이 급해지는 상황에서 뭐라고 말해야 할까요? | 반장님 | 1 | 지적을 수용하고 "조금 더 속도를 내보겠습니다"라고 의지를 표현했는가? | 네, 알겠습니다. 조금 더 속도를 내보겠습니다. |
+| SOC-LAB-FBK-003 | LABOR | FEEDBACK_ACCEPTANCE | 3 | 안전모 착용을 지적받았을 때 | 작업장이 너무 더워서 안전모를 잠깐 벗고 땀을 닦고 있었습니다. 그때 관리자님이 나타나 "안전 규칙 몰라요? 사고 나면 책임질 거야? 당장 써요!"라고 무섭게 지적합니다. 뭐라고 답변해야 할까요? | 관리자님 | 1 | 규칙 위반을 인정하고 즉시 안전모를 착용하며 알겠다고 답했는가? | 죄송합니다. 바로 안전모를 착용하겠습니다. |
 
 ---
 
@@ -122,9 +142,9 @@ is_active             -- 사용 여부
 
 | seed_code | job_type | category_code | situation_order | title | situation_text | character_info | difficulty | evaluation_point | example_answer |
 |---|---|---:|---:|---|---|---|---|---|---|
-| SOC-LAB-HELP-001 | LABOR | HELP_REQUEST | 1 | 기계 이상 증상을 알릴 때 | 대형 세탁기에서 수건을 꺼내고 있는데 기계에서 '텅텅'거리는 쇳소리가 나더니 갑자기 멈췄습니다. 혼자 해결하려다 사고가 날 것 같아 무서운 상황입니다. 관리자님께 어떻게 알려야 할까요? | 관리자님 | LEVEL_1 | 기계의 이상 증상, 즉 소음과 멈춤을 설명하고 도움을 요청했는가? | 관리자님, 세탁기에서 텅텅거리는 소리가 나더니 갑자기 멈췄습니다. 확인을 도와주실 수 있을까요? |
-| SOC-LAB-HELP-002 | LABOR | HELP_REQUEST | 2 | 무거운 박스를 함께 들어달라고 요청할 때 | 주방에서 식자재 박스 5개를 창고로 옮겨야 합니다. 박스가 너무 크고 무거워서 혼자 들다가 허리를 다칠 것 같은 상황입니다. 옆에 있는 동료에게 어떻게 도움을 청해야 할까요? | 동료 | LEVEL_1 | "박스가 너무 무거워서 그런데 같이 들어주실 수 있나요?"라고 구체적으로 요청했는가? | 박스가 너무 무거워서 그런데 같이 들어주실 수 있나요? |
-| SOC-LAB-HELP-003 | LABOR | HELP_REQUEST | 3 | 작업 순서가 기억나지 않을 때 | 어제 배운 나사 조립 작업인데, 오늘 아침 기계 앞에 서니 어디서부터 시작해야 할지 순서가 하나도 기억나지 않습니다. 가만히 있으면 일이 밀리는 상황입니다. 사수님께 어떻게 말해야 할까요? | 사수님 | LEVEL_1 | 기억이 나지 않음을 솔직히 말하고 다시 한번 알려달라고 재교육을 요청했는가? | 죄송합니다. 어제 배운 작업 순서가 정확히 기억나지 않습니다. 다시 한번만 알려주실 수 있을까요? |
+| SOC-LAB-HELP-001 | LABOR | HELP_REQUEST | 1 | 기계 이상 증상을 알릴 때 | 대형 세탁기에서 수건을 꺼내고 있는데 기계에서 '텅텅'거리는 쇳소리가 나더니 갑자기 멈췄습니다. 혼자 해결하려다 사고가 날 것 같아 무서운 상황입니다. 관리자님께 어떻게 알려야 할까요? | 관리자님 | 1 | 기계의 이상 증상, 즉 소음과 멈춤을 설명하고 도움을 요청했는가? | 관리자님, 세탁기에서 텅텅거리는 소리가 나더니 갑자기 멈췄습니다. 확인을 도와주실 수 있을까요? |
+| SOC-LAB-HELP-002 | LABOR | HELP_REQUEST | 2 | 무거운 박스를 함께 들어달라고 요청할 때 | 주방에서 식자재 박스 5개를 창고로 옮겨야 합니다. 박스가 너무 크고 무거워서 혼자 들다가 허리를 다칠 것 같은 상황입니다. 옆에 있는 동료에게 어떻게 도움을 청해야 할까요? | 동료 | 1 | "박스가 너무 무거워서 그런데 같이 들어주실 수 있나요?"라고 구체적으로 요청했는가? | 박스가 너무 무거워서 그런데 같이 들어주실 수 있나요? |
+| SOC-LAB-HELP-003 | LABOR | HELP_REQUEST | 3 | 작업 순서가 기억나지 않을 때 | 어제 배운 나사 조립 작업인데, 오늘 아침 기계 앞에 서니 어디서부터 시작해야 할지 순서가 하나도 기억나지 않습니다. 가만히 있으면 일이 밀리는 상황입니다. 사수님께 어떻게 말해야 할까요? | 사수님 | 1 | 기억이 나지 않음을 솔직히 말하고 다시 한번 알려달라고 재교육을 요청했는가? | 죄송합니다. 어제 배운 작업 순서가 정확히 기억나지 않습니다. 다시 한번만 알려주실 수 있을까요? |
 
 ---
 
@@ -132,9 +152,9 @@ is_active             -- 사용 여부
 
 | seed_code | job_type | category_code | situation_order | title | situation_text | character_info | difficulty | evaluation_point | example_answer |
 |---|---|---:|---:|---|---|---|---|---|---|
-| SOC-LAB-HEALTH-001 | LABOR | HEALTH_REPORT | 1 | 화장실에 급히 가야 할 때 | 마트 진열 업무를 하던 중 갑자기 배가 너무 아파서 당장 화장실에 가야 할 것 같습니다. 하지만 내 자리를 비우면 손님 안내를 할 사람이 없는 상황입니다. 관리자님께 뭐라고 말해야 할까요? | 관리자님 | LEVEL_1 | 화장실에 다녀와야 하는 상황임을 알리고 자리를 잠시 비워도 되는지 허락을 구했는가? | 관리자님, 배가 너무 아파서 화장실에 잠시 다녀와야 할 것 같습니다. 잠깐 자리를 비워도 될까요? |
-| SOC-LAB-HEALTH-002 | LABOR | HEALTH_REPORT | 2 | 더위로 어지러워 휴식이 필요할 때 | 한여름 뙤약볕에서 주차 안내를 하는데 갑자기 어지럽고 식은땀이 나며 쓰러질 것 같습니다. 계속 서 있으면 위험할 것 같은 상황입니다. 반장님께 휴식을 요청하려면 뭐라고 말해야 할까요? | 반장님 | LEVEL_1 | 어지러운 신체 상태를 설명하고 "10분만 쉬어도 될까요?"처럼 구체적인 시간을 요청했는가? | 반장님, 갑자기 어지럽고 식은땀이 납니다. 10분만 쉬어도 될까요? |
-| SOC-LAB-HEALTH-003 | LABOR | HEALTH_REPORT | 3 | 커터 칼에 손을 베었을 때 | 박스를 뜯다가 커터 칼에 손가락이 깊게 베여서 피가 많이 나고 손이 떨립니다. 너무 아파서 일을 계속할 수 없는 상황일 때 상사에게 어떻게 보고해야 할까요? | 상사 | LEVEL_1 | 부상 사실을 즉시 알리고 치료가 필요함을 요청했는가? | 손가락을 깊게 베어서 피가 많이 납니다. 보건실에 가서 치료를 받아야 할 것 같습니다. |
+| SOC-LAB-HEALTH-001 | LABOR | HEALTH_REPORT | 1 | 화장실에 급히 가야 할 때 | 마트 진열 업무를 하던 중 갑자기 배가 너무 아파서 당장 화장실에 가야 할 것 같습니다. 하지만 내 자리를 비우면 손님 안내를 할 사람이 없는 상황입니다. 관리자님께 뭐라고 말해야 할까요? | 관리자님 | 1 | 화장실에 다녀와야 하는 상황임을 알리고 자리를 잠시 비워도 되는지 허락을 구했는가? | 관리자님, 배가 너무 아파서 화장실에 잠시 다녀와야 할 것 같습니다. 잠깐 자리를 비워도 될까요? |
+| SOC-LAB-HEALTH-002 | LABOR | HEALTH_REPORT | 2 | 더위로 어지러워 휴식이 필요할 때 | 한여름 뙤약볕에서 주차 안내를 하는데 갑자기 어지럽고 식은땀이 나며 쓰러질 것 같습니다. 계속 서 있으면 위험할 것 같은 상황입니다. 반장님께 휴식을 요청하려면 뭐라고 말해야 할까요? | 반장님 | 1 | 어지러운 신체 상태를 설명하고 "10분만 쉬어도 될까요?"처럼 구체적인 시간을 요청했는가? | 반장님, 갑자기 어지럽고 식은땀이 납니다. 10분만 쉬어도 될까요? |
+| SOC-LAB-HEALTH-003 | LABOR | HEALTH_REPORT | 3 | 커터 칼에 손을 베었을 때 | 박스를 뜯다가 커터 칼에 손가락이 깊게 베여서 피가 많이 나고 손이 떨립니다. 너무 아파서 일을 계속할 수 없는 상황일 때 상사에게 어떻게 보고해야 할까요? | 상사 | 1 | 부상 사실을 즉시 알리고 치료가 필요함을 요청했는가? | 손가락을 깊게 베어서 피가 많이 납니다. 보건실에 가서 치료를 받아야 할 것 같습니다. |
 
 ---
 
@@ -148,13 +168,12 @@ safety_scenes
 safety_choices
 ```
 
-## 2.2 추천 컬럼 구조
+## 2.2 현재 DB insert 대상 컬럼
 
 ### safety_scenarios
 
 ```text
-scenario_id
-seed_code
+scenario_id          -- BIGINT AUTO_INCREMENT PK
 title
 category              -- SEXUAL_EDUCATION, INFECTIOUS_DISEASE, COMMUTE_SAFETY
 description
@@ -165,8 +184,7 @@ created_at
 ### safety_scenes
 
 ```text
-scene_id
-seed_code
+scene_id             -- BIGINT AUTO_INCREMENT PK
 scenario_id
 scene_order
 screen_info
@@ -178,13 +196,18 @@ is_end_scene
 ### safety_choices
 
 ```text
-choice_id
-seed_code
+choice_id            -- BIGINT AUTO_INCREMENT PK
 scene_id
-choice_order
 choice_text
 next_scene_id
 is_correct
+```
+
+## 2.2.1 확장 목표 컬럼
+
+```text
+seed_code            -- 시나리오/장면/선택지 seed 식별자
+choice_order         -- 선택지 노출 순서
 result_text
 effect_text
 ```
@@ -192,6 +215,8 @@ effect_text
 ---
 
 ## 2.3 안전 훈련 시나리오 목록
+
+아래 안전 훈련 표에서 `seed_code`, `scene_seed_code`, `choice_seed_code`, `choice_order`, `result_text`, `effect_text`는 현재 DB insert 컬럼이 아닙니다. 현재 insert 시에는 실제 FK id로 변환 가능한 값과 현재 DB 컬럼만 저장합니다.
 
 | seed_code | title | category | description |
 |---|---|---|---|
@@ -289,117 +314,108 @@ effect_text
 
 # 3. 문서 이해 훈련 Seed Data
 
-## 3.1 대상 테이블
+## 3.1 현재 호환 대상 테이블
 
 ```text
 document_questions
-document_question_choices
 ```
 
-## 3.2 추천 컬럼 구조
+현재 구현은 세션 시작 시 요청 level을 `LEVEL_1` ~ `LEVEL_5`로 변환하고, 해당 difficulty의 active 문제 5개를 랜덤 배정합니다.
 
-### document_questions
+따라서 현재 호환 seed는 다음 조건을 반드시 만족해야 합니다.
+
+- `question_type`은 `SHORT_ANSWER`를 사용한다.
+- `difficulty`는 `LEVEL_1` ~ `LEVEL_5`를 사용한다.
+- 각 difficulty마다 active 문제를 최소 5개 둔다.
+- 객관식 선택지는 현재 응답/제출 DTO에 없으므로 현재 insert 대상에서 제외한다.
+
+## 3.2 현재 DB insert 대상 컬럼
 
 ```text
-question_id
-seed_code
+question_id           -- BIGINT AUTO_INCREMENT PK
 title
 document_text
 question_text
-question_type          -- MULTIPLE_CHOICE
-difficulty             -- LEVEL_1 ~ LEVEL_5
+question_type         -- 현재 호환 값: SHORT_ANSWER
 correct_answer
 explanation
-correct_feedback
-wrong_feedback
+difficulty            -- LEVEL_1 ~ LEVEL_5
 is_active
 ```
 
-### document_question_choices
+## 3.3 현재 호환 문서 이해 문제 목록
+
+| seed_code | title | difficulty | question_type | document_text | question_text | correct_answer | explanation |
+|---|---|---|---|---|---|---|---|
+| DOC-L1-001 | 회의 안내 읽기 1 | LEVEL_1 | SHORT_ANSWER | 오늘 팀 회의는 오전 10시에 2층 회의실에서 시작합니다. 참석자는 개인 노트를 가져오십시오. | 회의는 어디에서 시작하나요? | 2층 회의실 | 안내문에 회의 장소가 2층 회의실이라고 적혀 있습니다. |
+| DOC-L1-002 | 점심시간 안내 읽기 2 | LEVEL_1 | SHORT_ANSWER | 오늘 점심시간은 낮 12시 30분부터 시작합니다. 식당 이용 전 사원증을 준비하십시오. | 점심시간은 언제 시작하나요? | 낮 12시 30분 | 안내문에 점심시간이 낮 12시 30분부터라고 적혀 있습니다. |
+| DOC-L1-003 | 서류 제출 안내 읽기 3 | LEVEL_1 | SHORT_ANSWER | 작성이 끝난 신청서는 파란색 제출함에 넣어 주세요. 제출함은 안내 데스크 옆에 있습니다. | 작성이 끝난 신청서는 어디에 넣어야 하나요? | 파란색 제출함 | 안내문에 신청서를 파란색 제출함에 넣으라고 되어 있습니다. |
+| DOC-L1-004 | 출입문 안내 읽기 4 | LEVEL_1 | SHORT_ANSWER | 정문 수리 기간에는 옆문을 이용해 출입해 주십시오. 옆문은 오전 8시부터 열립니다. | 정문 수리 기간에는 어떤 문을 이용해야 하나요? | 옆문 | 안내문은 정문 대신 옆문을 이용하라고 안내합니다. |
+| DOC-L1-005 | 교육 시작일 안내 읽기 5 | LEVEL_1 | SHORT_ANSWER | 신규 교육은 월요일 오전 9시에 시작합니다. 교육장은 3층 강의실입니다. | 신규 교육은 무슨 요일에 시작하나요? | 월요일 | 안내문에 신규 교육 시작일이 월요일이라고 적혀 있습니다. |
+| DOC-L2-001 | 안전 표지 이해 1 | LEVEL_2 | SHORT_ANSWER | 바닥이 젖어 있습니다. 천천히 걸으며 오른쪽 통로를 이용해 주세요. | 표지를 본 뒤 어떻게 걸어야 하나요? | 천천히 걷기 | 표지는 젖은 바닥에서 천천히 걸으라고 안내합니다. |
+| DOC-L2-002 | 방문자 안내 이해 2 | LEVEL_2 | SHORT_ANSWER | 방문자는 출입 전에 사무실에서 방문 기록을 작성해야 합니다. | 방문자는 어디에서 방문 기록을 작성해야 하나요? | 사무실 | 안내문에 사무실에서 방문 기록을 작성해야 한다고 되어 있습니다. |
+| DOC-L2-003 | 화재 경보 안내 이해 3 | LEVEL_2 | SHORT_ANSWER | 화재 경보가 울릴 때는 엘리베이터를 사용하지 마십시오. 계단을 이용해 대피하십시오. | 화재 경보가 울릴 때 사용하면 안 되는 것은 무엇인가요? | 엘리베이터 | 안내문은 화재 경보 시 엘리베이터 사용을 금지합니다. |
+| DOC-L2-004 | 청소 약품 안내 이해 4 | LEVEL_2 | SHORT_ANSWER | 청소 약품을 다룰 때는 반드시 장갑을 착용하십시오. 사용 후에는 뚜껑을 닫아 주세요. | 청소 약품을 다룰 때 무엇을 착용해야 하나요? | 장갑 | 안내문에 장갑을 착용하라고 적혀 있습니다. |
+| DOC-L2-005 | 공구 점검 안내 이해 5 | LEVEL_2 | SHORT_ANSWER | 손상된 공구는 사용 전에 관리자에게 보고해야 합니다. 임의로 사용하지 마십시오. | 손상된 공구는 누구에게 보고해야 하나요? | 관리자 | 안내문은 손상된 공구를 관리자에게 보고하라고 합니다. |
+| DOC-L3-001 | 복사기 메모 읽기 1 | LEVEL_3 | SHORT_ANSWER | 복사기에 종이가 없으면 비품장 아래 칸에서 A4 용지를 꺼내 채워 주세요. | 복사기 종이는 어디에 있나요? | 비품장 아래 칸 | 메모에 A4 용지가 비품장 아래 칸에 있다고 되어 있습니다. |
+| DOC-L3-002 | 근무표 제출 메모 읽기 2 | LEVEL_3 | SHORT_ANSWER | 이번 주 근무표는 금요일 오후까지 급여 담당자에게 제출해야 합니다. | 근무표는 언제까지 제출해야 하나요? | 금요일 오후 | 메모에 제출 기한이 금요일 오후라고 적혀 있습니다. |
+| DOC-L3-003 | 사원증 수령 메모 읽기 3 | LEVEL_3 | SHORT_ANSWER | 새 사원증은 접수 데스크에서 받을 수 있습니다. 수령 시 본인 확인이 필요합니다. | 새 사원증은 어디에서 받을 수 있나요? | 접수 데스크 | 메모에 새 사원증을 접수 데스크에서 받을 수 있다고 되어 있습니다. |
+| DOC-L3-004 | 실내 온도 메모 읽기 4 | LEVEL_3 | SHORT_ANSWER | 회의실 온도가 너무 낮으면 시설 관리팀에 연락해 조정을 요청하십시오. | 회의실이 너무 추우면 누구에게 연락해야 하나요? | 시설 관리팀 | 메모는 온도 문제가 있을 때 시설 관리팀에 연락하라고 합니다. |
+| DOC-L3-005 | 배송 전 확인 메모 읽기 5 | LEVEL_3 | SHORT_ANSWER | 상품을 발송하기 전에는 포장 라벨의 이름과 주소를 반드시 확인해야 합니다. | 발송 전 반드시 확인해야 하는 것은 무엇인가요? | 포장 라벨의 이름과 주소 | 메모에 발송 전 포장 라벨의 이름과 주소를 확인하라고 되어 있습니다. |
+| DOC-L4-001 | 작업 지시 이해 1 | LEVEL_4 | SHORT_ANSWER | 물품을 스캔한 뒤 파손 표시가 없으면 A상자에 넣고, 파손 표시가 있으면 보류함에 넣으십시오. | 파손 표시가 없는 물품은 어디에 넣어야 하나요? | A상자 | 지시문은 파손 표시가 없는 물품을 A상자에 넣으라고 합니다. |
+| DOC-L4-002 | 업무 순서 이해 2 | LEVEL_4 | SHORT_ANSWER | 개점 준비 두 가지를 모두 끝낸 뒤에만 일일 점검표를 이메일로 보내십시오. | 일일 점검표는 언제 이메일로 보내야 하나요? | 개점 준비 두 가지를 모두 끝낸 뒤 | 지시문은 개점 준비 완료 후 이메일을 보내라고 합니다. |
+| DOC-L4-003 | 환불 처리 이해 3 | LEVEL_4 | SHORT_ANSWER | 고객 영수증이 없으면 환불을 처리하기 전에 매니저에게 먼저 확인해야 합니다. | 영수증이 없을 때 환불 전 누구에게 확인해야 하나요? | 매니저 | 지시문은 환불 전 매니저에게 확인하라고 합니다. |
+| DOC-L4-004 | 냉장 배송 이해 4 | LEVEL_4 | SHORT_ANSWER | 냉장 배송품은 도착 후 10분 안에 냉장고에 보관해야 합니다. | 냉장 배송품은 어디에 보관해야 하나요? | 냉장고 | 지시문은 냉장 배송품을 냉장고에 보관하라고 합니다. |
+| DOC-L4-005 | 예비 프린터 이해 5 | LEVEL_4 | SHORT_ANSWER | 예비 프린터는 기본 프린터에 오류가 표시될 때만 사용하십시오. | 예비 프린터는 언제 사용해야 하나요? | 기본 프린터에 오류가 표시될 때 | 지시문은 기본 프린터 오류 시에만 예비 프린터를 사용하라고 합니다. |
+| DOC-L5-001 | 교대 시간 비교 1 | LEVEL_5 | SHORT_ANSWER | 오전 근무는 8시 30분에 시작하고, 오후 근무는 1시에 시작합니다. | 오후 근무는 몇 시에 시작하나요? | 1시 | 문서에 오후 근무 시작 시간이 1시라고 되어 있습니다. |
+| DOC-L5-002 | 우편 분류 비교 2 | LEVEL_5 | SHORT_ANSWER | 긴급 우편은 3번 데스크로 보내고, 일반 우편은 1번 데스크로 보냅니다. | 긴급 우편은 어디로 보내야 하나요? | 3번 데스크 | 문서에 긴급 우편은 3번 데스크로 보내라고 되어 있습니다. |
+| DOC-L5-003 | 파손 물품 처리 비교 3 | LEVEL_5 | SHORT_ANSWER | 물품이 파손된 경우 HOLD 라벨을 붙이고 재고 담당자에게 알려야 합니다. | 파손된 물품에는 어떤 라벨을 붙여야 하나요? | HOLD 라벨 | 문서에 파손 물품에는 HOLD 라벨을 붙이라고 되어 있습니다. |
+| DOC-L5-004 | 교대 변경 조건 비교 4 | LEVEL_5 | SHORT_ANSWER | 직원은 감독자의 서면 승인을 받은 뒤에만 근무 교대를 바꿀 수 있습니다. | 근무 교대를 바꾸기 전에 무엇이 필요한가요? | 감독자의 서면 승인 | 문서에 근무 교대 변경 전 감독자의 서면 승인이 필요하다고 되어 있습니다. |
+| DOC-L5-005 | 주문 포장 기준 비교 5 | LEVEL_5 | SHORT_ANSWER | 오후 4시 이후 접수된 주문은 다음 영업일에 포장합니다. | 오후 4시 이후 접수된 주문은 언제 포장하나요? | 다음 영업일 | 문서에 오후 4시 이후 주문은 다음 영업일에 포장한다고 되어 있습니다. |
+
+## 3.4 확장 목표: 문서 이해 객관식 seed
+
+객관식 문제는 현재 DB/API에서 바로 사용할 수 없으므로 현재 insert 대상에서 제외합니다. 향후 `document_question_choices` 테이블과 응답/제출 DTO를 확장한 뒤 아래 형태로 사용합니다.
+
+### 확장 목표 컬럼
 
 ```text
-choice_id
-seed_code
-question_id
-choice_order
-choice_text
-is_correct
+document_questions.seed_code
+document_questions.correct_feedback
+document_questions.wrong_feedback
+document_question_choices.choice_id
+document_question_choices.seed_code
+document_question_choices.question_id
+document_question_choices.choice_order
+document_question_choices.choice_text
+document_question_choices.is_correct
 ```
 
----
+### 객관식 후보 문제
 
-## 3.3 문서 이해 문제 목록
-
-### DOC-L1-001: 신입사원 워크숍 안내
-
-| column | value |
-|---|---|
-| seed_code | DOC-L1-001 |
-| title | 신입사원 워크숍 안내 |
-| difficulty | LEVEL_1 |
-| question_type | MULTIPLE_CHOICE |
-| document_text | 이번 신입사원 워크숍은 5월 10일 강원도 속초에서 진행됩니다. 모든 참가자는 당일 오전 8시까지 회사 정문 앞 대형 버스에 탑승해야 합니다. 개인 세면도구와 운동화는 개별적으로 준비하시기 바랍니다. 숙소 내에서 취사는 금지되어 있으며, 저녁 식사는 인근 식당에서 단체로 진행될 예정입니다. |
-| question_text | 위 글의 내용과 일치하지 않는 것은 무엇인가요? |
-| correct_answer | 숙소 안에서 직접 음식을 만들어 먹을 수 있다. |
-| explanation | 숙소 내에서 취사는 금지되어 있으므로, 직접 음식을 만들어 먹을 수 있다는 내용은 글과 일치하지 않습니다. |
-| wrong_feedback | X! 글의 마지막 문장에서 '취사는 금지'라고 적혀 있어요. 다시 확인해 볼까요? |
-| correct_feedback | 정답입니다! 세부 사항을 꼼꼼하게 읽으셨네요! |
+| seed_code | title | difficulty | question_type | correct_answer | correct_feedback | wrong_feedback |
+|---|---|---|---|---|---|---|
+| DOC-MC-L1-001 | 신입사원 워크숍 안내 | LEVEL_1 | MULTIPLE_CHOICE | 숙소 안에서 직접 음식을 만들어 먹을 수 있다. | 정답입니다. 세부 사항을 꼼꼼하게 읽었습니다. | 글의 마지막 문장에서 취사 금지 내용을 다시 확인해야 합니다. |
+| DOC-MC-L2-001 | 사내 복사기 사용 및 고장 대처법 | LEVEL_2 | MULTIPLE_CHOICE | 복사기 앞 덮개 열기 | 업무 매뉴얼의 처리 순서를 정확히 파악했습니다. | 문제 해결 순서를 찾기 위해 먼저 해야 하는 행동을 확인해야 합니다. |
+| DOC-MC-L3-001 | 비품 절약 및 관리 협조 요청 | LEVEL_3 | MULTIPLE_CHOICE | 사무용품을 아껴 쓰자고 제안하기 위해 | 글의 핵심 목적을 정확히 파악했습니다. | 글쓴이가 왜 이 글을 보냈는지 결론 문장을 다시 확인해야 합니다. |
 
 | choice_seed_code | question_seed_code | choice_order | choice_text | is_correct |
 |---|---|---:|---|---|
-| DOC-L1-001-C01 | DOC-L1-001 | 1 | 워크숍 장소는 강원도 속초이다. | false |
-| DOC-L1-001-C02 | DOC-L1-001 | 2 | 오전 8시까지 버스에 타야 한다. | false |
-| DOC-L1-001-C03 | DOC-L1-001 | 3 | 숙소 안에서 직접 음식을 만들어 먹을 수 있다. | true |
-
----
-
-### DOC-L2-001: 사내 복사기 사용 및 고장 대처법
-
-| column | value |
-|---|---|
-| seed_code | DOC-L2-001 |
-| title | 사내 복사기 사용 및 고장 대처법 |
-| difficulty | LEVEL_2 |
-| question_type | MULTIPLE_CHOICE |
-| document_text | 복사기를 사용하기 전에는 먼저 종이가 충분한지 확인해야 합니다. 만약 종이가 걸렸을 경우에는 강제로 잡아당기지 마십시오. 먼저 앞 덮개를 열고 걸린 종이를 천천히 제거한 뒤, 다시 덮개를 닫고 '재시작' 버튼을 누르세요. 만약 이 방법으로도 해결되지 않는다면, 즉시 관리부(내선 102번)로 연락하여 수리를 요청해야 합니다. 직접 기계를 분해하는 행동은 위험하므로 절대 금합니다. |
-| question_text | 종이가 걸렸을 때 가장 먼저 해야 할 행동은 무엇인가요? |
-| correct_answer | 복사기 앞 덮개 열기 |
-| explanation | 종이가 걸렸을 경우 먼저 앞 덮개를 열고 걸린 종이를 천천히 제거해야 합니다. |
-| wrong_feedback | 아쉬워요! 문제 해결의 '순서'를 찾는 것이 중요해요. '먼저'라는 글자 뒤를 찾아보세요. |
-| correct_feedback | 훌륭합니다! 업무 매뉴얼의 순서를 완벽히 파악하셨습니다. |
-
-| choice_seed_code | question_seed_code | choice_order | choice_text | is_correct |
-|---|---|---:|---|---|
-| DOC-L2-001-C01 | DOC-L2-001 | 1 | 관리부에 전화하기 | false |
-| DOC-L2-001-C02 | DOC-L2-001 | 2 | 복사기 앞 덮개 열기 | true |
-| DOC-L2-001-C03 | DOC-L2-001 | 3 | 걸린 종이 강제로 잡아당기기 | false |
-
----
-
-### DOC-L3-001: 비품 절약 및 관리 협조 요청
-
-| column | value |
-|---|---|
-| seed_code | DOC-L3-001 |
-| title | 비품 절약 및 관리 협조 요청 |
-| difficulty | LEVEL_3 |
-| question_type | MULTIPLE_CHOICE |
-| document_text | 임직원 여러분, 최근 사무용품 소모량이 예년에 비해 30% 이상 증가했습니다. 특히 종이컵과 A4 용지의 무분별한 사용이 예산 낭비의 주요 원인이 되고 있습니다. 따라서 오늘부터 회의 시 개인 컵 사용을 권장하며, 이면지 활용을 생활화해주시기 바랍니다. 작은 실천이 모여 우리 회사의 환경을 보호하고 예산을 절감할 수 있습니다. 여러분의 적극적인 협조 부탁드립니다. |
-| question_text | 이 메일을 보낸 가장 큰 목적은 무엇인가요? |
-| correct_answer | 사무용품을 아껴 쓰자고 제안하기 위해 |
-| explanation | 글쓴이는 사무용품 사용 증가로 인한 예산 낭비를 줄이기 위해 개인 컵 사용과 이면지 활용을 제안하고 있습니다. |
-| wrong_feedback | X! 글쓴이가 이 글을 왜 썼는지 '따라서' 뒤에 나오는 결론을 확인해 보세요. |
-| correct_feedback | 완벽해요! 글의 핵심 주제를 정확하게 짚어내셨습니다. |
-
-| choice_seed_code | question_seed_code | choice_order | choice_text | is_correct |
-|---|---|---:|---|---|
-| DOC-L3-001-C01 | DOC-L3-001 | 1 | 종이컵의 종류를 알려주기 위해 | false |
-| DOC-L3-001-C02 | DOC-L3-001 | 2 | 사무용품을 아껴 쓰자고 제안하기 위해 | true |
-| DOC-L3-001-C03 | DOC-L3-001 | 3 | 새로운 회의 장소를 안내하기 위해 | false |
+| DOC-MC-L1-001-C01 | DOC-MC-L1-001 | 1 | 워크숍 장소는 강원도 속초이다. | false |
+| DOC-MC-L1-001-C02 | DOC-MC-L1-001 | 2 | 오전 8시까지 버스에 타야 한다. | false |
+| DOC-MC-L1-001-C03 | DOC-MC-L1-001 | 3 | 숙소 안에서 직접 음식을 만들어 먹을 수 있다. | true |
+| DOC-MC-L2-001-C01 | DOC-MC-L2-001 | 1 | 관리부에 전화하기 | false |
+| DOC-MC-L2-001-C02 | DOC-MC-L2-001 | 2 | 복사기 앞 덮개 열기 | true |
+| DOC-MC-L2-001-C03 | DOC-MC-L2-001 | 3 | 걸린 종이 강제로 잡아당기기 | false |
+| DOC-MC-L3-001-C01 | DOC-MC-L3-001 | 1 | 종이컵의 종류를 알려주기 위해 | false |
+| DOC-MC-L3-001-C02 | DOC-MC-L3-001 | 2 | 사무용품을 아껴 쓰자고 제안하기 위해 | true |
+| DOC-MC-L3-001-C03 | DOC-MC-L3-001 | 3 | 새로운 회의 장소를 안내하기 위해 | false |
 
 ---
 
 # 4. 전체 Seed 수량 요약
+
+## 4.1 현재 호환 seed
 
 | 영역 | 테이블 | seed 수량 |
 |---|---|---:|
@@ -407,14 +423,28 @@ is_correct
 | 안전 훈련 | safety_scenarios | 3 |
 | 안전 장면 | safety_scenes | 11 |
 | 안전 선택지 | safety_choices | 33 |
-| 문서 이해 문제 | document_questions | 3 |
+| 문서 이해 문제 | document_questions | 25 |
+
+## 4.2 확장 목표 seed
+
+| 영역 | 테이블/컬럼 | seed 수량 |
+|---|---|---:|
+| 문서 이해 객관식 문제 | document_questions 확장 컬럼 | 3 |
 | 문서 이해 선택지 | document_question_choices | 9 |
+| 사회성 평가 기준 | social_scenarios 확장 컬럼 | 18 |
+| 안전 선택 결과 문구 | safety_choices 확장 컬럼 | 33 |
 
 ---
 
 # 5. DB Insert 변환 시 주의사항
 
-## 5.1 safety_choices.next_scene_id 처리
+## 5.1 현재 호환 insert 원칙
+
+- `seed_code`, `category_code`, `situation_order`, `evaluation_point`, `example_answer`, `choice_order`, `result_text`, `effect_text`는 현재 DB insert 대상 컬럼이 아닙니다.
+- 위 값들은 현재 단계에서는 seed script 내부 매핑 또는 문서 관리용 메타데이터로만 사용합니다.
+- 현재 문서 이해 seed는 `SHORT_ANSWER` 문제만 insert합니다.
+
+## 5.2 safety_choices.next_scene_id 처리
 
 Markdown에서는 `next_scene_seed_code`로 표기했습니다.
 
@@ -425,18 +455,26 @@ Markdown에서는 `next_scene_seed_code`로 표기했습니다.
 3. `scene_seed_code -> scene_id` 매핑 생성
 4. `safety_choices` insert 시 `next_scene_seed_code`를 실제 `next_scene_id`로 변환
 
-## 5.2 종료 선택지 처리
+## 5.3 종료 선택지 처리
 
 성공 엔딩으로 끝나는 선택지는 `next_scene_seed_code = NULL`입니다.
 
 실제 DB에서는 `next_scene_id`를 `NULL`로 저장합니다.
 
-## 5.3 사회성 훈련 채점 처리
+## 5.4 향후 확장 구현 계획
 
-사회성 훈련은 선택지가 없으므로 `evaluation_point`를 기준으로 AI 평가 또는 룰 기반 평가를 수행합니다.
+### DB 확장
 
-`example_answer`는 사용자에게 직접 노출할 수도 있고, 내부 평가 기준으로만 사용할 수도 있습니다.
+- 콘텐츠 테이블에 `seed_code`를 추가하고 unique index를 적용합니다.
+- `document_question_choices` 테이블을 추가합니다.
+- `social_scenarios`에 `category_code`, `situation_order`, `evaluation_point`, `example_answer`를 추가합니다.
+- `safety_choices`에 `choice_order`, `result_text`, `effect_text`를 추가합니다.
+- `document_questions`에 `correct_feedback`, `wrong_feedback`을 추가합니다.
 
-## 5.4 문서 이해 선택지 처리
+### 코드/API 확장
 
-현재 기본 DB 명세의 `document_questions`에는 선택지 저장 구조가 부족하므로, 객관식 문제를 정상적으로 관리하려면 `document_question_choices` 테이블을 추가하는 것을 권장합니다.
+- 사회성 difficulty 파싱이 `LEVEL_1` 형식도 처리하도록 개선합니다.
+- 안전 선택지 조회를 `choice_order` 기준으로 정렬합니다.
+- 안전 선택 결과 응답에 `resultText`, `effectText`를 추가합니다.
+- 문서 이해 시작 응답에 객관식 선택지 배열을 포함합니다.
+- 문서 이해 제출은 선택지 기반 답변도 채점 가능하도록 확장합니다.
