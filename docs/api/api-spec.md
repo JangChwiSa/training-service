@@ -81,8 +81,10 @@ report_db
 
 ```
 - 외부 API는 요청 바디나 쿼리 파라미터로 user_id를 직접 받지 않는다.
-- API Gateway 또는 각 서비스는 Access Token에서 user_id를 추출한다.
-- 사용자별 조회/수정/훈련 시작/훈련 완료/리포트 조회는 모두 토큰의 user_id를 기준으로 처리한다.
+- 외부 클라이언트는 API Gateway에 Authorization: Bearer Access Token을 전달한다.
+- API Gateway는 Access Token을 검증한 뒤 user_id를 추출한다.
+- API Gateway는 Training Service로 요청을 전달할 때 trusted header인 X-User-Id에 인증된 user_id를 담아 전달한다.
+- Training Service는 Authorization 토큰을 직접 검증하거나 디코딩하지 않고, Gateway가 전달한 X-User-Id를 현재 사용자 식별자로 사용한다.
 - 내부 API는 서비스 간 호출 목적에 한해 경로에 userId를 포함할 수 있다.
 - sessionId 기반 상세 조회 또는 완료 처리 시, 해당 sessionId가 현재 user_id의 세션인지 반드시 검증한다.
 ```
@@ -93,8 +95,11 @@ report_db
 
 | Header | 필수 | 설명 |
 | --- | --- | --- |
-| Authorization | 인증 필요 API만 Y | Bearer Access Token |
+| Authorization | 외부 클라이언트 → API Gateway 인증 필요 API만 Y | Bearer Access Token |
+| X-User-Id | API Gateway → Training Service Y | Gateway가 토큰 검증 후 전달하는 인증된 사용자 ID |
 | Content-Type | Y | application/json |
+
+Swagger에서 Training Service를 직접 호출하는 로컬 테스트는 API Gateway를 거치지 않으므로 `X-User-Id`를 직접 입력한다.
 
 ### 2.2 공통 응답 형식
 
@@ -838,7 +843,7 @@ social_scenarios
 ### DB 처리
 
 ```
-Access Token에서 user_id 추출
+Gateway가 전달한 X-User-Id를 현재 user_id로 사용
 training_sessions 생성
 user_id = 현재 사용자 ID
 training_type = SOCIAL
@@ -1007,7 +1012,7 @@ AND (category = 요청값 OR 요청값 없으면 전체)
 ### DB 처리
 
 ```
-Access Token에서 user_id 추출
+Gateway가 전달한 X-User-Id를 현재 user_id로 사용
 training_sessions 생성
 user_id = 현재 사용자 ID
 training_type = SAFETY
@@ -1159,7 +1164,7 @@ user_focus_progress
 ### DB 처리
 
 ```
-Access Token에서 user_id 추출
+Gateway가 전달한 X-User-Id를 현재 user_id로 사용
 user_focus_progress.highest_unlocked_level로 선택 가능 여부 검증
 training_sessions 생성
 user_id = 현재 사용자 ID
@@ -1250,7 +1255,7 @@ TrainingCompleted 이벤트 발행
 ### DB 처리
 
 ```
-Access Token에서 user_id 추출
+Gateway가 전달한 X-User-Id를 현재 user_id로 사용
 training_sessions 생성
 user_id = 현재 사용자 ID
 training_type = DOCUMENT
