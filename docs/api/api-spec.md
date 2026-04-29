@@ -570,7 +570,6 @@ SAFETY
 ```
 공통:
 - training_session_summaries
-- type=SAFETY 이고 category 값이 있으면 training_session_summaries.category로 추가 필터링
 - 목록 응답은 training_session_summaries에 저장된 스냅샷 필드만 사용한다.
 
 사회성:
@@ -690,7 +689,7 @@ training_session_summaries.completed_at DESC
 - 상세 데이터는 각 훈련 상세 조회 API에서 sessionId 기반으로 조회한다.
 - 단, 집중력 훈련은 별도 상세 조회 API를 제공하지 않는다.
 - 훈련 기록 목록 API는 training_session_summaries만 조회한다.
-- 안전 훈련은 training_session_summaries.category 조건으로 카테고리별 기록 조회가 가능하다.
+- 안전 훈련의 category는 응답 필드로 제공하지만, 목록 API의 필터 조건으로는 사용하지 않는다.
 - 훈련 완료 시 목록 화면에 필요한 scenario_id, scenario_title, category, feedback_summary를 training_session_summaries에 함께 저장한다.
 - 훈련 완료 시 Training Service가 원본 로그/점수/피드백 저장 후 training_session_summaries를 생성한다.
 - 상세 데이터는 각 훈련 상세 조회 API에서 원본 로그 테이블을 조회한다.
@@ -1422,15 +1421,39 @@ TrainingCompleted 이벤트 발행
 ```json
 {
   "sessionId": 50,
-  "score": 100,
-  "correctCount": 1,
-  "totalCount": 1,
+  "score": 80,
+  "correctCount": 4,
+  "totalCount": 5,
   "results": [
     {
       "questionId": 1,
       "correct": true,
       "correctAnswer": "오전 9시",
       "explanation": "문서에 오전 9시로 변경된다고 명시되어 있습니다."
+    },
+    {
+      "questionId": 2,
+      "correct": false,
+      "correctAnswer": "2층 회의실",
+      "explanation": "문서에 교육 장소가 2층 회의실로 안내되어 있습니다."
+    },
+    {
+      "questionId": 3,
+      "correct": true,
+      "correctAnswer": "안전모",
+      "explanation": "문서에 현장 출입 시 안전모 착용이 필요하다고 명시되어 있습니다."
+    },
+    {
+      "questionId": 4,
+      "correct": true,
+      "correctAnswer": "오후 6시",
+      "explanation": "문서에 제출 마감 시간이 오후 6시로 안내되어 있습니다."
+    },
+    {
+      "questionId": 5,
+      "correct": true,
+      "correctAnswer": "담당자에게 즉시 보고",
+      "explanation": "문서에 이상 상황 발생 시 담당자에게 즉시 보고하라고 설명되어 있습니다."
     }
   ],
   "completed": true

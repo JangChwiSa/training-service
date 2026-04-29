@@ -195,7 +195,7 @@
         Browser-->>User: 선택한 훈련 페이지 표시
     ```
     
-- 2.2 훈련 현황 조회
+- 2.2 이번 달 훈련 수준 조회
     
     ```mermaid
     sequenceDiagram
@@ -206,94 +206,49 @@
         participant TS as Training Service
         participant TDB as training_db
     
-        ## 1. 훈련 현황 페이지 진입
-        User->>Browser: 훈련 현황 메뉴 선택
-        Browser->>Nginx: 훈련 현황 요약 조회 요청 (기본: 사회성)
+        ## 1. 훈련 수준 페이지 진입
+        User->>Browser: 훈련 수준 메뉴 선택
+        Browser->>Nginx: 이번 달 훈련 수준 조회 요청 (기본: SOCIAL)
         Nginx->>GW: 요청 전달
-        GW->>TS: 사회성 훈련 요약 조회 요청
-        TS->>TDB: 사회성 훈련 요약 데이터 조회
-        TDB-->>TS: 최근 수행일, 완료 여부, 대표 점수, 간략 피드백 반환
-        TS-->>GW: 사회성 훈련 요약 응답
+        GW->>TS: GET /api/trainings/progress?type=SOCIAL
+        TS->>TS: Asia/Seoul 기준 이번 달 시작/다음 달 시작 계산
+        TS->>TDB: training_session_summaries에서 SOCIAL 완료 이력 조회
+        TDB-->>TS: 이번 달 완료 수와 점수 반환
+        TS->>TS: 최소 완료 수와 평균 점수 기준으로 level/reason/metrics 산정
+        TS-->>GW: 공통 훈련 수준 응답
         GW-->>Nginx: 응답 전달
-        Nginx-->>Browser: 요약 응답
-        Browser-->>User: 사회성 훈련 현황 요약 표시
+        Nginx-->>Browser: 수준 응답
+        Browser-->>User: 사회성 이번 달 훈련 수준 표시
     
-        ## 2. 사회성 훈련 상세보기
-        opt 사회성 상세보기 선택
-            User->>Browser: 사회성 상세보기 클릭
-            Browser->>Nginx: 사회성 상세 데이터 조회 요청
+        ## 2. 다른 훈련 유형 탭 선택
+        opt 훈련 유형 탭 선택
+            User->>Browser: 안전/문서 이해/집중력 탭 선택
+            Browser->>Nginx: 이번 달 훈련 수준 조회 요청(type=SAFETY|DOCUMENT|FOCUS)
             Nginx->>GW: 요청 전달
-            GW->>TS: 사회성 상세 데이터 조회 요청
-            TS->>TDB: 점수, AI 피드백 결과, 대화 로그 조회
-            TDB-->>TS: 사회성 상세 데이터 반환
-            TS-->>GW: 사회성 상세 응답
+            GW->>TS: GET /api/trainings/progress?type={trainingType}
+            TS->>TS: Asia/Seoul 기준 이번 달 범위 계산
+            TS->>TDB: training_session_summaries 완료 이력 조회
+            opt DOCUMENT
+                TS->>TDB: training_sessions.sub_type에서 완료한 최고 LEVEL_n 확인
+            end
+            TS->>TS: 유형별 규칙으로 level/reason/metrics 산정
+            TS-->>GW: 공통 훈련 수준 응답
             GW-->>Nginx: 응답 전달
-            Nginx-->>Browser: 상세 응답
-            Browser-->>User: 점수, 피드백, 대화 로그 표시
+            Nginx-->>Browser: 수준 응답
+            Browser-->>User: 선택한 훈련 유형의 이번 달 수준 표시
         end
     
-        ## 3. 안전 훈련 현황 및 상세보기
-        opt 안전 훈련 탭 선택
-            User->>Browser: 안전 훈련 탭 선택
-            Browser->>Nginx: 안전 훈련 요약 조회 요청
+        ## 3. 훈련 기록 목록 조회
+        opt 기록 목록 표시
+            Browser->>Nginx: 훈련 기록 목록 조회 요청(type, page, size)
             Nginx->>GW: 요청 전달
-            GW->>TS: 안전 훈련 요약 조회 요청
-            TS->>TDB: 안전 훈련 요약 데이터 조회
-            TDB-->>TS: 최근 수행일, 완료 여부, 대표 점수, 간략 피드백 반환
-            TS-->>GW: 안전 훈련 요약 응답
+            GW->>TS: GET /api/trainings/sessions?type={trainingType}&page={page}&size={size}
+            TS->>TDB: training_session_summaries 목록 조회
+            TDB-->>TS: 완료 세션 요약 목록 반환
+            TS-->>GW: 훈련 기록 목록 응답
             GW-->>Nginx: 응답 전달
-            Nginx-->>Browser: 요약 응답
-            Browser-->>User: 안전 훈련 현황 요약 표시
-    
-            User->>Browser: 안전 훈련 상세보기 클릭
-            Browser->>Nginx: 안전 훈련 상세 데이터 조회 요청
-            Nginx->>GW: 요청 전달
-            GW->>TS: 안전 훈련 상세 데이터 조회 요청
-            TS->>TDB: 점수, 선택 이력, 안전 피드백 조회
-            TDB-->>TS: 안전 훈련 상세 데이터 반환
-            TS-->>GW: 안전 훈련 상세 응답
-            GW-->>Nginx: 응답 전달
-            Nginx-->>Browser: 상세 응답
-            Browser-->>User: 점수, 선택 이력, 피드백 표시
-        end
-    
-        ## 4. 문서 이해 훈련 현황 및 상세보기
-        opt 문서 이해 훈련 탭 선택
-            User->>Browser: 문서 이해 훈련 탭 선택
-            Browser->>Nginx: 문서 이해 훈련 요약 조회 요청
-            Nginx->>GW: 요청 전달
-            GW->>TS: 문서 이해 훈련 요약 조회 요청
-            TS->>TDB: 문서 이해 훈련 요약 데이터 조회
-            TDB-->>TS: 최근 수행일, 완료 여부, 대표 점수, 간략 피드백 반환
-            TS-->>GW: 문서 이해 훈련 요약 응답
-            GW-->>Nginx: 응답 전달
-            Nginx-->>Browser: 요약 응답
-            Browser-->>User: 문서 이해 훈련 현황 요약 표시
-    
-            User->>Browser: 문서 이해 상세보기 클릭
-            Browser->>Nginx: 문서 이해 상세 데이터 조회 요청
-            Nginx->>GW: 요청 전달
-            GW->>TS: 문서 이해 상세 데이터 조회 요청
-            TS->>TDB: 문제별 정답 여부, 점수, 해설, 피드백 조회
-            TDB-->>TS: 문서 이해 상세 데이터 반환
-            TS-->>GW: 문서 이해 상세 응답
-            GW-->>Nginx: 응답 전달
-            Nginx-->>Browser: 상세 응답
-            Browser-->>User: 점수, 문제별 결과, 해설, 피드백 표시
-        end
-    
-        ## 5. 집중력 훈련 현황 조회(상세보기 없음: progress 조회와 sessions 목록 조회로 대체)
-        opt 집중력 훈련 탭 선택
-            User->>Browser: 집중력 훈련 탭 선택
-            Browser->>Nginx: 집중력 훈련 현황 조회 요청
-            Nginx->>GW: 요청 전달
-            GW->>TS: 집중력 훈련 현황 조회 요청
-            TS->>TDB: 단계별 기록, 정확도, 오답 수, 반응시간, 해금 단계 조회
-            TDB-->>TS: 집중력 훈련 현황 데이터 반환
-            TS-->>GW: 집중력 훈련 현황 응답
-            GW-->>Nginx: 응답 전달
-            Nginx-->>Browser: 현황 응답
-            Browser-->>User: 상세보기 없이 기록, 정확도, 오답 수, 반응시간, 해금 단계 바로 표시
+            Nginx-->>Browser: 목록 응답
+            Browser-->>User: 완료 기록 목록 표시
         end
     ```
     

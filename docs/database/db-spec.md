@@ -107,6 +107,8 @@ erDiagram
     FOCUS_LEVEL_RULES ||--o{ TRAINING_SESSIONS : defines
     TRAINING_SESSIONS ||--o{ FOCUS_COMMANDS : contains
     FOCUS_COMMANDS ||--o{ FOCUS_REACTION_LOGS : records
+    TRAINING_SESSIONS ||--o{ DOCUMENT_SESSION_QUESTIONS : assigns
+    DOCUMENT_QUESTIONS ||--o{ DOCUMENT_SESSION_QUESTIONS : assigned
     DOCUMENT_QUESTIONS ||--o{ DOCUMENT_ANSWER_LOGS : solved
     TRAINING_SESSIONS ||--o{ DOCUMENT_ANSWER_LOGS : contains
     TRAINING_SESSIONS ||--o| TRAINING_SCORES : has
@@ -750,14 +752,14 @@ UNIQUE: session_id
 NOT NULL: session_id, user_id, training_type, title, completed_at, created_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
 CHECK: category IN ('SEXUAL_EDUCATION', 'INFECTIOUS_DISEASE', 'COMMUTE_SAFETY') 또는 NULL 허용
-CHECK: score BETWEEN 0 AND 100
-CHECK: correct_count >= 0
-CHECK: total_count >= 0
-CHECK: correct_count <= total_count
-CHECK: accuracy_rate BETWEEN 0 AND 100
-CHECK: wrong_count >= 0
-CHECK: played_level >= 1
-CHECK: average_reaction_ms >= 0
+CHECK: score BETWEEN 0 AND 100 또는 NULL 허용
+CHECK: correct_count >= 0 또는 NULL 허용
+CHECK: total_count >= 0 또는 NULL 허용
+CHECK: correct_count <= total_count 또는 NULL 허용
+CHECK: accuracy_rate BETWEEN 0 AND 100 또는 NULL 허용
+CHECK: wrong_count >= 0 또는 NULL 허용
+CHECK: played_level >= 1 또는 NULL 허용
+CHECK: average_reaction_ms >= 0 또는 NULL 허용
 ```
 
 ### 저장 기준
