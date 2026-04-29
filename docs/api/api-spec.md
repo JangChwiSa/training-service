@@ -456,6 +456,17 @@ FOCUS    → user_focus_progress
 }
 ```
 
+#### SOCIAL 속성 설명
+
+| 속성 | 설명 |
+| --- | --- |
+| `trainingType` | 응답 훈련 유형. 항상 `SOCIAL`이다. |
+| `recentSessionId` | 최근 완료한 사회성 훈련 세션 ID. 완료 기록이 없으면 `null`이다. |
+| `recentScore` | 최근 완료한 사회성 훈련 점수. 0-100 범위이며 기록이 없으면 `null`이다. |
+| `recentFeedbackSummary` | 최근 사회성 훈련의 요약 피드백. 기록이 없으면 `null`이다. |
+| `completedCount` | 완료한 사회성 훈련 누적 횟수. |
+| `lastCompletedAt` | 마지막 사회성 훈련 완료 시각. ISO-8601 LocalDateTime 형식이며 기록이 없으면 `null`이다. |
+
 ### Response - SAFETY
 
 ```json
@@ -468,6 +479,17 @@ FOCUS    → user_focus_progress
   "lastCompletedAt": "2026-04-27T10:20:00"
 }
 ```
+
+#### SAFETY 속성 설명
+
+| 속성 | 설명 |
+| --- | --- |
+| `trainingType` | 응답 훈련 유형. 항상 `SAFETY`이다. |
+| `recentSessionId` | 최근 완료한 안전 훈련 세션 ID. 완료 기록이 없으면 `null`이다. |
+| `correctCount` | 최근 완료한 안전 훈련의 정답 선택 수. |
+| `totalCount` | 최근 완료한 안전 훈련의 전체 선택 수. |
+| `completedCount` | 완료한 안전 훈련 누적 횟수. |
+| `lastCompletedAt` | 마지막 안전 훈련 완료 시각. ISO-8601 LocalDateTime 형식이며 기록이 없으면 `null`이다. |
 
 ### Response - DOCUMENT
 
@@ -483,6 +505,18 @@ FOCUS    → user_focus_progress
 }
 ```
 
+#### DOCUMENT 속성 설명
+
+| 속성 | 설명 |
+| --- | --- |
+| `trainingType` | 응답 훈련 유형. 항상 `DOCUMENT`이다. |
+| `recentSessionId` | 최근 완료한 문서 이해 훈련 세션 ID. 완료 기록이 없으면 `null`이다. |
+| `correctCount` | 최근 완료한 문서 이해 훈련의 정답 문제 수. |
+| `totalCount` | 최근 완료한 문서 이해 훈련의 전체 문제 수. |
+| `recentScore` | 최근 완료한 문서 이해 훈련 점수. 0-100 범위이며 기록이 없으면 `null`이다. |
+| `completedCount` | 완료한 문서 이해 훈련 누적 횟수. |
+| `lastCompletedAt` | 마지막 문서 이해 훈련 완료 시각. ISO-8601 LocalDateTime 형식이며 기록이 없으면 `null`이다. |
+
 ### Response - FOCUS
 
 ```json
@@ -496,6 +530,18 @@ FOCUS    → user_focus_progress
   "updatedAt": "2026-04-27T11:00:00"
 }
 ```
+
+#### FOCUS 속성 설명
+
+| 속성 | 설명 |
+| --- | --- |
+| `trainingType` | 응답 훈련 유형. 항상 `FOCUS`이다. |
+| `currentLevel` | 사용자의 현재 집중력 훈련 단계. |
+| `highestUnlockedLevel` | 사용자가 플레이할 수 있는 최고 해금 단계. |
+| `lastPlayedLevel` | 가장 최근에 플레이한 집중력 훈련 단계. 기록이 없으면 `null`이다. |
+| `lastAccuracyRate` | 최근 집중력 훈련 정확도. 퍼센트 값이며 기록이 없으면 `null`이다. |
+| `lastAverageReactionMs` | 최근 집중력 훈련 평균 반응 시간. 단위는 밀리초(ms)이며 기록이 없으면 `null`이다. |
+| `updatedAt` | 집중력 진행 상태가 마지막으로 갱신된 시각. ISO-8601 LocalDateTime 형식이다. |
 
 ---
 
