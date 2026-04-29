@@ -109,15 +109,38 @@ Swagger에서 Training Service를 직접 호출하는 로컬 테스트는 API Ga
 
 ## 2.2 공통 응답 형식
 
+Training Service의 컨트롤러는 성공/실패 응답을 모두 `ApiResponse<T>` 형식으로 반환한다.
+
+각 API의 `Response` 예시는 실제 HTTP 응답의 `data` 필드에 들어가는 payload를 설명한다.
+따라서 클라이언트가 실제 값을 읽을 때는 최상위 응답이 아니라 `data` 아래의 값을 사용한다.
+
+예를 들어 API별 Response 예시가 다음과 같다면:
+
+```json
+{
+  "sessionId": 10,
+  "score": 85,
+  "completed": true
+}
+```
+
+실제 성공 응답 body는 다음 형식이다.
+
 ```json
 {
   "success": true,
-  "data": {},
+  "data": {
+    "sessionId": 10,
+    "score": 85,
+    "completed": true
+  },
   "error": null
 }
 ```
 
 ## 2.3 공통 오류 응답
+
+오류 응답은 `data`가 `null`이고, `error`에 코드와 메시지가 들어간다.
 
 ```json
 {
@@ -134,7 +157,7 @@ Swagger에서 Training Service를 직접 호출하는 로컬 테스트는 API Ga
 
 | 코드 | 설명 |
 | --- | --- |
-| UNAUTHORIZED | 인증 토큰이 없거나 유효하지 않음 |
+| UNAUTHORIZED | 인증된 사용자 컨텍스트가 없거나 유효하지 않음 |
 | FORBIDDEN | 접근 권한 없음 |
 | VALIDATION_ERROR | 요청값 검증 실패 |
 | NOT_FOUND | 요청한 리소스 없음 |
