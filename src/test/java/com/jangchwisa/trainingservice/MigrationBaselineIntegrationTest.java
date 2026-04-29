@@ -46,6 +46,7 @@ class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
             assertThat(tableExists(connection, "focus_reaction_logs")).isTrue();
             assertThat(tableExists(connection, "user_focus_progress")).isTrue();
             assertThat(tableExists(connection, "document_questions")).isTrue();
+            assertThat(tableExists(connection, "document_session_questions")).isTrue();
             assertThat(tableExists(connection, "document_answer_logs")).isTrue();
             assertThat(tableExists(connection, "user_document_progress")).isTrue();
             assertThat(contentTableUserIdColumnCount(connection)).isZero();

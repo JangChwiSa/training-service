@@ -11,6 +11,8 @@ import com.jangchwisa.trainingservice.common.security.TrustedUserHeaderPropertie
 import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerDetailResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResponse;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository;
+import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
+import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
 import com.jangchwisa.trainingservice.training.document.service.DocumentTrainingService;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionOwnershipRepository;
@@ -25,8 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -58,15 +62,28 @@ class DocumentTrainingControllerTest {
 
     @Test
     void startsDocumentSession() throws Exception {
-        documentRepository.questions = List.of(question(1L));
+        documentRepository.questions = questions(1L, 5);
 
         mockMvc.perform(post("/api/trainings/document/sessions")
-                        .header("X-User-Id", "7"))
+                        .header("X-User-Id", "7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"level\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sessionId").value(1))
+                .andExpect(jsonPath("$.data.questions.length()").value(5))
                 .andExpect(jsonPath("$.data.questions[0].questionId").value(1))
-                .andExpect(jsonPath("$.data.questions[0].title").value("근무 시간 변경 안내"))
+                .andExpect(jsonPath("$.data.questions[0].title").value("Document question 1"))
                 .andExpect(jsonPath("$.data.questions[0].questionType").value("SHORT_ANSWER"));
+    }
+
+    @Test
+    void rejectsInvalidDocumentLevel() throws Exception {
+        mockMvc.perform(post("/api/trainings/document/sessions")
+                        .header("X-User-Id", "7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"level\":6}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     @Test
@@ -75,11 +92,11 @@ class DocumentTrainingControllerTest {
         documentRepository.score = Optional.of(new DocumentTrainingRepository.DocumentScoreRow(80, 8, 10));
         documentRepository.answerLogs = List.of(new DocumentAnswerDetailResponse(
                 1L,
-                "변경된 근무 시작 시간은 언제인가요?",
-                "오전 9시",
-                "오전 9시",
+                "What time does work start?",
+                "9:00 AM",
+                "9:00 AM",
                 true,
-                "문서에 오전 9시로 변경된다고 명시되어 있습니다."
+                "The document says work starts at 9:00 AM."
         ));
 
         mockMvc.perform(get("/api/trainings/document/sessions/10/detail")
@@ -116,11 +133,17 @@ class DocumentTrainingControllerTest {
     private static DocumentQuestionResponse question(long questionId) {
         return new DocumentQuestionResponse(
                 questionId,
-                "근무 시간 변경 안내",
-                "오늘부터 근무 시간이 오전 9시로 변경됩니다.",
-                "변경된 근무 시작 시간은 언제인가요?",
+                "Document question " + questionId,
+                "Document text " + questionId,
+                "Question " + questionId,
                 "SHORT_ANSWER"
         );
+    }
+
+    private static List<DocumentQuestionResponse> questions(long startQuestionId, int count) {
+        return LongStream.range(startQuestionId, startQuestionId + count)
+                .mapToObj(DocumentTrainingControllerTest::question)
+                .toList();
     }
 
     static class FakeDocumentTrainingRepository implements DocumentTrainingRepository {
@@ -132,6 +155,29 @@ class DocumentTrainingControllerTest {
         @Override
         public List<DocumentQuestionResponse> findActiveQuestions() {
             return questions;
+        }
+
+        @Override
+        public List<DocumentQuestionResponse> findRandomActiveQuestionsByDifficulty(String difficulty, int limit) {
+            return questions;
+        }
+
+        @Override
+        public void saveSessionQuestions(long sessionId, List<DocumentQuestionResponse> questions) {
+        }
+
+        @Override
+        public List<Long> findSessionQuestionIds(long sessionId) {
+            return List.of();
+        }
+
+        @Override
+        public List<DocumentQuestionAnswerRow> findAssignedQuestionAnswers(long sessionId) {
+            return List.of();
+        }
+
+        @Override
+        public void saveAnswerLogs(long sessionId, List<ScoredDocumentAnswer> answers) {
         }
 
         @Override

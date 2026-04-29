@@ -15,6 +15,7 @@ import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerResult
 import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerSummaryResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentSessionDetailResponse;
+import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionRequest;
 import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionResponse;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
@@ -41,6 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DocumentTrainingService {
+
+    private static final int DOCUMENT_SESSION_QUESTION_COUNT = 5;
 
     private final DocumentTrainingRepository documentTrainingRepository;
     private final TrainingSessionService trainingSessionService;
@@ -69,16 +72,21 @@ public class DocumentTrainingService {
     }
 
     @Transactional
-    public StartDocumentSessionResponse startSession(CurrentUser currentUser) {
-        List<DocumentQuestionResponse> questions = documentTrainingRepository.findActiveQuestions();
-        if (questions.isEmpty()) {
-            throw new TrainingServiceException(ErrorCode.NOT_FOUND, "Document question was not found.");
+    public StartDocumentSessionResponse startSession(CurrentUser currentUser, StartDocumentSessionRequest request) {
+        String difficulty = toDifficulty(request.level());
+        List<DocumentQuestionResponse> questions = documentTrainingRepository.findRandomActiveQuestionsByDifficulty(
+                difficulty,
+                DOCUMENT_SESSION_QUESTION_COUNT
+        );
+        if (questions.size() < DOCUMENT_SESSION_QUESTION_COUNT) {
+            throw new TrainingServiceException(ErrorCode.CONFLICT, "Not enough active document questions for the requested level.");
         }
 
         TrainingSession session = trainingSessionService.createSession(
                 currentUser,
-                new CreateTrainingSessionCommand(currentUser.userId(), TrainingType.DOCUMENT, null, null)
+                new CreateTrainingSessionCommand(currentUser.userId(), TrainingType.DOCUMENT, difficulty, null)
         );
+        documentTrainingRepository.saveSessionQuestions(session.sessionId(), questions);
 
         return new StartDocumentSessionResponse(session.sessionId(), questions);
     }
@@ -90,7 +98,7 @@ public class DocumentTrainingService {
             SubmitDocumentAnswersRequest request
     ) {
         sessionOwnershipValidator.validateOwner(sessionId, currentUser);
-        validateUniqueQuestionIds(request.answers());
+        validateAssignedQuestionIds(sessionId, request.answers());
     }
 
     @Transactional(readOnly = true)
@@ -115,15 +123,9 @@ public class DocumentTrainingService {
     ) {
         ensureCompletionDependency();
         validateAnswerSubmission(currentUser, sessionId, request);
-        List<Long> questionIds = request.answers().stream()
-                .map(DocumentAnswerRequest::questionId)
-                .toList();
-        Map<Long, DocumentQuestionAnswerRow> questionById = documentTrainingRepository.findQuestionAnswers(questionIds)
+        Map<Long, DocumentQuestionAnswerRow> questionById = documentTrainingRepository.findAssignedQuestionAnswers(sessionId)
                 .stream()
                 .collect(Collectors.toMap(DocumentQuestionAnswerRow::questionId, Function.identity()));
-        if (questionById.size() != questionIds.size()) {
-            throw new TrainingServiceException(ErrorCode.NOT_FOUND, "Document question was not found.");
-        }
 
         List<ScoredDocumentAnswer> scoredAnswers = request.answers().stream()
                 .map(answer -> ScoredDocumentAnswer.from(answer, questionById.get(answer.questionId())))
@@ -190,13 +192,24 @@ public class DocumentTrainingService {
         );
     }
 
-    private void validateUniqueQuestionIds(List<DocumentAnswerRequest> answers) {
-        Set<Long> questionIds = new HashSet<>();
+    private void validateAssignedQuestionIds(long sessionId, List<DocumentAnswerRequest> answers) {
+        Set<Long> submittedQuestionIds = new HashSet<>();
         for (DocumentAnswerRequest answer : answers) {
-            if (!questionIds.add(answer.questionId())) {
+            if (!submittedQuestionIds.add(answer.questionId())) {
                 throw new TrainingServiceException(ErrorCode.VALIDATION_ERROR, "Duplicate document answer question id.");
             }
         }
+
+        Set<Long> assignedQuestionIds = new HashSet<>(documentTrainingRepository.findSessionQuestionIds(sessionId));
+        if (assignedQuestionIds.size() != DOCUMENT_SESSION_QUESTION_COUNT
+                || submittedQuestionIds.size() != DOCUMENT_SESSION_QUESTION_COUNT
+                || !submittedQuestionIds.equals(assignedQuestionIds)) {
+            throw new TrainingServiceException(ErrorCode.VALIDATION_ERROR, "Document answers must exactly match assigned session questions.");
+        }
+    }
+
+    private String toDifficulty(int level) {
+        return "LEVEL_" + level;
     }
 
     private void ensureCompletionDependency() {

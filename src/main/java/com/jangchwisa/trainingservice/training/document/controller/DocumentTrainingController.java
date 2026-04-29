@@ -4,6 +4,7 @@ import com.jangchwisa.trainingservice.common.response.ApiResponse;
 import com.jangchwisa.trainingservice.common.security.AuthenticatedUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentSessionDetailResponse;
+import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionRequest;
 import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionResponse;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
@@ -30,8 +31,11 @@ public class DocumentTrainingController {
             description = "문서 이해 훈련 세션을 생성하고 활성 문서 문제 목록을 반환합니다."
     )
     @PostMapping("/api/trainings/document/sessions")
-    public ApiResponse<StartDocumentSessionResponse> startSession(@AuthenticatedUser CurrentUser currentUser) {
-        return ApiResponse.success(documentTrainingService.startSession(currentUser));
+    public ApiResponse<StartDocumentSessionResponse> startSession(
+            @AuthenticatedUser CurrentUser currentUser,
+            @Valid @org.springframework.web.bind.annotation.RequestBody StartDocumentSessionRequest request
+    ) {
+        return ApiResponse.success(documentTrainingService.startSession(currentUser, request));
     }
 
     @Operation(

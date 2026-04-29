@@ -506,11 +506,43 @@ CHECK: last_average_reaction_ms >= 0
 
 ```text
 PK: question_id
-NOT NULL: title, question_text, correct_answer
+NOT NULL: title, question_text, correct_answer, difficulty
+CHECK: difficulty IN ('LEVEL_1', 'LEVEL_2', 'LEVEL_3', 'LEVEL_4', 'LEVEL_5')
 DEFAULT: is_active = true
 ```
 
-## 3.12 document_answer_logs
+### Index
+
+```text
+document_questions(difficulty, is_active)
+```
+
+## 3.12 document_session_questions
+
+문서 이해 훈련 세션 시작 시 사용자에게 배정된 문제 목록을 저장하기 위한 테이블.
+`document_answer_logs`는 답변 제출 후 사용자 답변과 채점 결과를 저장한다.
+
+### 속성
+
+| 속성명 | 설명 |
+| --- | --- |
+| session_id | 훈련 세션 ID |
+| question_id | 배정된 문서 이해 문제 ID |
+| display_order | 세션 내 문제 표시 순서 |
+| created_at | 생성 일시 |
+
+### 제약 조건
+
+```text
+PK: session_id + question_id
+FK: session_id → training_sessions.session_id
+FK: question_id → document_questions.question_id
+UNIQUE: session_id + display_order
+NOT NULL: session_id, question_id, display_order, created_at
+CHECK: display_order >= 1
+```
+
+## 3.13 document_answer_logs
 
 문서 이해 훈련의 문제별 답변 결과를 저장하기 위한 테이블.
 
@@ -537,7 +569,7 @@ NOT NULL: session_id, question_id, user_answer, correct_answer, is_correct, crea
 UNIQUE: session_id + question_id
 ```
 
-## 3.12.1 user_document_progress
+## 3.13.1 user_document_progress
 
 사용자별 문서 이해 훈련 최신 진행 요약을 관리하기 위한 테이블.
 
@@ -760,6 +792,8 @@ user_social_progress(user_id)
 user_safety_progress(user_id)
 user_focus_progress(user_id)
 user_document_progress(user_id)
+document_questions(difficulty, is_active)
+document_session_questions(session_id, display_order)
 document_answer_logs(session_id)
 training_scores(session_id)
 safety_scenarios(category, is_active)

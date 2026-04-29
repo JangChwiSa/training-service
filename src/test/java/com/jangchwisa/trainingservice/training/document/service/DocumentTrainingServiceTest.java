@@ -6,19 +6,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.jangchwisa.trainingservice.common.exception.ErrorCode;
 import com.jangchwisa.trainingservice.common.exception.TrainingServiceException;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
+import com.jangchwisa.trainingservice.event.outbox.OutboxEvent;
+import com.jangchwisa.trainingservice.event.outbox.OutboxEventRepository;
+import com.jangchwisa.trainingservice.training.completion.TrainingCompletionService;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerDetailResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerRequest;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentSessionDetailResponse;
+import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionRequest;
 import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSessionResponse;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
-import com.jangchwisa.trainingservice.event.outbox.OutboxEvent;
-import com.jangchwisa.trainingservice.event.outbox.OutboxEventRepository;
-import com.jangchwisa.trainingservice.training.completion.TrainingCompletionService;
 import com.jangchwisa.trainingservice.training.feedback.entity.TrainingFeedback;
 import com.jangchwisa.trainingservice.training.feedback.repository.TrainingFeedbackRepository;
 import com.jangchwisa.trainingservice.training.progress.entity.TrainingProgressCompletion;
@@ -28,12 +29,12 @@ import com.jangchwisa.trainingservice.training.score.repository.TrainingScoreRep
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSessionStatus;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
-import com.jangchwisa.trainingservice.training.summary.entity.TrainingSessionSummary;
-import com.jangchwisa.trainingservice.training.summary.repository.TrainingSessionSummaryRepository;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionOwnershipRepository;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionRepository;
 import com.jangchwisa.trainingservice.training.session.service.SessionOwnershipValidator;
 import com.jangchwisa.trainingservice.training.session.service.TrainingSessionService;
+import com.jangchwisa.trainingservice.training.summary.entity.TrainingSessionSummary;
+import com.jangchwisa.trainingservice.training.summary.repository.TrainingSessionSummaryRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.Test;
 
 class DocumentTrainingServiceTest {
@@ -60,28 +62,34 @@ class DocumentTrainingServiceTest {
     );
 
     @Test
-    void startsDocumentSessionAndReturnsActiveQuestions() {
-        documentRepository.questions = List.of(question(1L));
+    void startsDocumentSessionAndReturnsFiveLevelQuestions() {
+        documentRepository.questions = questions(1L, 5);
 
-        StartDocumentSessionResponse response = service.startSession(new CurrentUser(7L));
+        StartDocumentSessionResponse response = service.startSession(
+                new CurrentUser(7L),
+                new StartDocumentSessionRequest(3)
+        );
 
         TrainingSession savedSession = sessionRepository.sessions.get(response.sessionId());
         assertThat(savedSession.userId()).isEqualTo(7L);
         assertThat(savedSession.trainingType()).isEqualTo(TrainingType.DOCUMENT);
-        assertThat(savedSession.subType()).isNull();
+        assertThat(savedSession.subType()).isEqualTo("LEVEL_3");
         assertThat(savedSession.scenarioId()).isNull();
-        assertThat(response.questions()).hasSize(1);
-        assertThat(response.questions().get(0).questionId()).isEqualTo(1L);
+        assertThat(documentRepository.requestedDifficulty).isEqualTo("LEVEL_3");
+        assertThat(documentRepository.requestedLimit).isEqualTo(5);
+        assertThat(documentRepository.savedSessionQuestions).hasSize(5);
+        assertThat(response.questions()).hasSize(5);
+        assertThat(response.questions().getFirst().questionId()).isEqualTo(1L);
     }
 
     @Test
-    void rejectsStartWhenActiveQuestionDoesNotExist() {
-        documentRepository.questions = List.of();
+    void rejectsStartWhenLevelHasFewerThanFiveActiveQuestions() {
+        documentRepository.questions = questions(1L, 4);
 
-        assertThatThrownBy(() -> service.startSession(new CurrentUser(7L)))
+        assertThatThrownBy(() -> service.startSession(new CurrentUser(7L), new StartDocumentSessionRequest(1)))
                 .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
-                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND);
-                    assertThat(exception.getMessage()).isEqualTo("Document question was not found.");
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.CONFLICT);
+                    assertThat(exception.getMessage()).isEqualTo("Not enough active document questions for the requested level.");
                 });
     }
 
@@ -89,8 +97,8 @@ class DocumentTrainingServiceTest {
     void rejectsDuplicateQuestionIdsInAnswerSubmission() {
         ownershipRepository.save(10L, 1L);
         SubmitDocumentAnswersRequest request = new SubmitDocumentAnswersRequest(List.of(
-                new DocumentAnswerRequest(1L, "오전 9시"),
-                new DocumentAnswerRequest(1L, "다른 답변")
+                new DocumentAnswerRequest(1L, "Answer 1"),
+                new DocumentAnswerRequest(1L, "Another answer")
         ));
 
         assertThatThrownBy(() -> service.validateAnswerSubmission(new CurrentUser(1L), 10L, request))
@@ -101,16 +109,35 @@ class DocumentTrainingServiceTest {
     }
 
     @Test
+    void rejectsAnswerSubmissionWhenQuestionSetDoesNotExactlyMatchAssignment() {
+        ownershipRepository.save(10L, 1L);
+        documentRepository.assignedQuestionIds = List.of(1L, 2L, 3L, 4L, 5L);
+        SubmitDocumentAnswersRequest request = new SubmitDocumentAnswersRequest(List.of(
+                new DocumentAnswerRequest(1L, "Answer 1"),
+                new DocumentAnswerRequest(2L, "Answer 2"),
+                new DocumentAnswerRequest(3L, "Answer 3"),
+                new DocumentAnswerRequest(4L, "Answer 4"),
+                new DocumentAnswerRequest(99L, "Answer 99")
+        ));
+
+        assertThatThrownBy(() -> service.validateAnswerSubmission(new CurrentUser(1L), 10L, request))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getMessage()).isEqualTo("Document answers must exactly match assigned session questions.");
+                });
+    }
+
+    @Test
     void returnsDetailAfterOwnershipValidation() {
         ownershipRepository.save(10L, 1L);
         documentRepository.score = Optional.of(new DocumentTrainingRepository.DocumentScoreRow(80, 8, 10));
         documentRepository.answerLogs = List.of(new DocumentAnswerDetailResponse(
                 1L,
-                "변경된 근무 시작 시간은 언제인가요?",
-                "오전 9시",
-                "오전 9시",
+                "What time does work start?",
+                "9:00 AM",
+                "9:00 AM",
                 true,
-                "문서에 오전 9시로 변경된다고 명시되어 있습니다."
+                "The document says work starts at 9:00 AM."
         ));
 
         DocumentSessionDetailResponse response = service.getSessionDetail(new CurrentUser(1L), 10L);
@@ -120,7 +147,7 @@ class DocumentTrainingServiceTest {
         assertThat(response.answerSummary().correctCount()).isEqualTo(8);
         assertThat(response.answerSummary().totalCount()).isEqualTo(10);
         assertThat(response.answers()).hasSize(1);
-        assertThat(response.answers().get(0).correct()).isTrue();
+        assertThat(response.answers().getFirst().correct()).isTrue();
     }
 
     @Test
@@ -139,19 +166,14 @@ class DocumentTrainingServiceTest {
         TrainingSession session = TrainingSession.start(
                 1L,
                 TrainingType.DOCUMENT,
-                null,
+                "LEVEL_1",
                 null,
                 java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
         ).withSessionId(10L);
         sessionRepository.sessions.put(10L, session);
         ownershipRepository.save(10L, 1L);
-        documentRepository.questionAnswers = List.of(new DocumentQuestionAnswerRow(
-                1L,
-                "근무 시간 변경 안내",
-                "변경된 근무 시작 시간은 언제인가요?",
-                "오전 9시",
-                "문서에 오전 9시로 명시되어 있습니다."
-        ));
+        documentRepository.assignedQuestionIds = List.of(1L, 2L, 3L, 4L, 5L);
+        documentRepository.questionAnswers = questionAnswers(1L, 5);
         CapturingTrainingScoreRepository scoreRepository = new CapturingTrainingScoreRepository();
         CapturingOutboxEventRepository outboxEventRepository = new CapturingOutboxEventRepository();
         DocumentTrainingService completionEnabledService = new DocumentTrainingService(
@@ -172,14 +194,20 @@ class DocumentTrainingServiceTest {
         SubmitDocumentAnswersResponse response = completionEnabledService.submitAnswers(
                 new CurrentUser(1L),
                 10L,
-                new SubmitDocumentAnswersRequest(List.of(new DocumentAnswerRequest(1L, "오전 9시")))
+                new SubmitDocumentAnswersRequest(List.of(
+                        new DocumentAnswerRequest(1L, "Answer 1"),
+                        new DocumentAnswerRequest(2L, "Answer 2"),
+                        new DocumentAnswerRequest(3L, "Answer 3"),
+                        new DocumentAnswerRequest(4L, "Answer 4"),
+                        new DocumentAnswerRequest(5L, "Answer 5")
+                ))
         );
 
         assertThat(response.completed()).isTrue();
         assertThat(response.score()).isEqualTo(100);
-        assertThat(response.correctCount()).isEqualTo(1);
-        assertThat(response.totalCount()).isEqualTo(1);
-        assertThat(documentRepository.savedAnswers).hasSize(1);
+        assertThat(response.correctCount()).isEqualTo(5);
+        assertThat(response.totalCount()).isEqualTo(5);
+        assertThat(documentRepository.savedAnswers).hasSize(5);
         assertThat(scoreRepository.saved.scoreType()).isEqualTo("ACCURACY_RATE");
         assertThat(sessionRepository.sessions.get(10L).status()).isEqualTo(TrainingSessionStatus.COMPLETED);
         assertThat(outboxEventRepository.saved.eventType()).isEqualTo("TrainingCompleted");
@@ -188,11 +216,29 @@ class DocumentTrainingServiceTest {
     private static DocumentQuestionResponse question(long questionId) {
         return new DocumentQuestionResponse(
                 questionId,
-                "근무 시간 변경 안내",
-                "오늘부터 근무 시간이 오전 9시로 변경됩니다.",
-                "변경된 근무 시작 시간은 언제인가요?",
+                "Document question " + questionId,
+                "Document text " + questionId,
+                "Question " + questionId,
                 "SHORT_ANSWER"
         );
+    }
+
+    private static List<DocumentQuestionResponse> questions(long startQuestionId, int count) {
+        return LongStream.range(startQuestionId, startQuestionId + count)
+                .mapToObj(DocumentTrainingServiceTest::question)
+                .toList();
+    }
+
+    private static List<DocumentQuestionAnswerRow> questionAnswers(long startQuestionId, int count) {
+        return LongStream.range(startQuestionId, startQuestionId + count)
+                .mapToObj(questionId -> new DocumentQuestionAnswerRow(
+                        questionId,
+                        "Document question " + questionId,
+                        "Question " + questionId,
+                        "Answer " + questionId,
+                        "Explanation " + questionId
+                ))
+                .toList();
     }
 
     static class FakeDocumentTrainingRepository implements DocumentTrainingRepository {
@@ -202,10 +248,37 @@ class DocumentTrainingServiceTest {
         List<DocumentAnswerDetailResponse> answerLogs = List.of();
         List<DocumentQuestionAnswerRow> questionAnswers = List.of();
         List<ScoredDocumentAnswer> savedAnswers = List.of();
+        List<Long> assignedQuestionIds = List.of();
+        List<DocumentQuestionResponse> savedSessionQuestions = List.of();
+        String requestedDifficulty;
+        int requestedLimit;
 
         @Override
         public List<DocumentQuestionResponse> findActiveQuestions() {
             return questions;
+        }
+
+        @Override
+        public List<DocumentQuestionResponse> findRandomActiveQuestionsByDifficulty(String difficulty, int limit) {
+            requestedDifficulty = difficulty;
+            requestedLimit = limit;
+            return questions;
+        }
+
+        @Override
+        public void saveSessionQuestions(long sessionId, List<DocumentQuestionResponse> questions) {
+            savedSessionQuestions = questions;
+            assignedQuestionIds = questions.stream().map(DocumentQuestionResponse::questionId).toList();
+        }
+
+        @Override
+        public List<Long> findSessionQuestionIds(long sessionId) {
+            return assignedQuestionIds;
+        }
+
+        @Override
+        public List<DocumentQuestionAnswerRow> findAssignedQuestionAnswers(long sessionId) {
+            return questionAnswers;
         }
 
         @Override
@@ -290,10 +363,7 @@ class DocumentTrainingServiceTest {
         }
 
         @Override
-        public long countByUserIdAndTrainingType(
-                long userId,
-                TrainingType trainingType
-        ) {
+        public long countByUserIdAndTrainingType(long userId, TrainingType trainingType) {
             return 0;
         }
 

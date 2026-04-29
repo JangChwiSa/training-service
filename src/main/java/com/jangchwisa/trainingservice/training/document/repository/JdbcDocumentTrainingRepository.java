@@ -34,6 +34,71 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
     }
 
     @Override
+    public List<DocumentQuestionResponse> findRandomActiveQuestionsByDifficulty(String difficulty, int limit) {
+        String sql = """
+                SELECT question_id, title, document_text, question_text, question_type
+                FROM document_questions
+                WHERE difficulty = ?
+                  AND is_active = true
+                ORDER BY RAND()
+                LIMIT ?
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionResponse(
+                resultSet.getLong("question_id"),
+                resultSet.getString("title"),
+                resultSet.getString("document_text"),
+                resultSet.getString("question_text"),
+                resultSet.getString("question_type")
+        ), difficulty, limit);
+    }
+
+    @Override
+    public void saveSessionQuestions(long sessionId, List<DocumentQuestionResponse> questions) {
+        String sql = """
+                INSERT INTO document_session_questions (
+                    session_id, question_id, display_order, created_at
+                )
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP(6))
+                """;
+        for (int index = 0; index < questions.size(); index++) {
+            jdbcTemplate.update(sql, sessionId, questions.get(index).questionId(), index + 1);
+        }
+    }
+
+    @Override
+    public List<Long> findSessionQuestionIds(long sessionId) {
+        String sql = """
+                SELECT question_id
+                FROM document_session_questions
+                WHERE session_id = ?
+                ORDER BY display_order ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> resultSet.getLong("question_id"), sessionId);
+    }
+
+    @Override
+    public List<DocumentQuestionAnswerRow> findAssignedQuestionAnswers(long sessionId) {
+        String sql = """
+                SELECT question.question_id,
+                       question.title,
+                       question.question_text,
+                       question.correct_answer,
+                       question.explanation
+                FROM document_session_questions session_question
+                JOIN document_questions question ON question.question_id = session_question.question_id
+                WHERE session_question.session_id = ?
+                ORDER BY session_question.display_order ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionAnswerRow(
+                resultSet.getLong("question_id"),
+                resultSet.getString("title"),
+                resultSet.getString("question_text"),
+                resultSet.getString("correct_answer"),
+                resultSet.getString("explanation")
+        ), sessionId);
+    }
+
+    @Override
     public List<DocumentQuestionAnswerRow> findQuestionAnswers(List<Long> questionIds) {
         if (questionIds.isEmpty()) {
             return List.of();

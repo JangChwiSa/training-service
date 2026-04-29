@@ -632,3 +632,38 @@
             RS->>RDB: 재계산된 리포트 데이터 저장
         end
     ```
+
+## 8. Document Training Level Assignment Addendum
+
+```mermaid
+sequenceDiagram
+    actor User as User
+    participant Browser as Browser/App
+    participant Nginx as Nginx/Load Balancer
+    participant GW as API Gateway
+    participant TS as Training Service
+    participant TDB as training_db
+
+    User->>Browser: Select document training level
+    Browser->>Nginx: Start session request(level)
+    Nginx->>GW: Forward request
+    GW->>TS: Create document session request(level)
+    TS->>TS: Convert level to LEVEL_1~LEVEL_5 difficulty
+    TS->>TDB: Query random 5 active document_questions by difficulty
+    TDB-->>TS: Return assigned 5 questions
+    TS->>TDB: Create training_sessions row(sub_type=LEVEL_n)
+    TDB-->>TS: Return sessionId
+    TS->>TDB: Save assigned questions to document_session_questions
+    TS-->>GW: Return sessionId and questions
+    GW-->>Nginx: Forward response
+    Nginx-->>Browser: Start session response
+
+    Browser->>Nginx: Submit answers(sessionId, answers)
+    Nginx->>GW: Forward request
+    GW->>TS: Score answers request
+    TS->>TDB: Load assigned questions from document_session_questions
+    TDB-->>TS: Return session question IDs
+    TS->>TS: Verify submitted questionIds exactly match assigned 5 questions
+    TS->>TDB: Load answers and explanations for assigned questions
+    TS->>TDB: Save answer logs, score, feedback, progress, summary
+```

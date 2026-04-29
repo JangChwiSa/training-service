@@ -10,6 +10,22 @@ public interface DocumentTrainingRepository {
 
     List<DocumentQuestionResponse> findActiveQuestions();
 
+    default List<DocumentQuestionResponse> findRandomActiveQuestionsByDifficulty(String difficulty, int limit) {
+        throw new UnsupportedOperationException("findRandomActiveQuestionsByDifficulty is not implemented.");
+    }
+
+    default void saveSessionQuestions(long sessionId, List<DocumentQuestionResponse> questions) {
+        throw new UnsupportedOperationException("saveSessionQuestions is not implemented.");
+    }
+
+    default List<Long> findSessionQuestionIds(long sessionId) {
+        throw new UnsupportedOperationException("findSessionQuestionIds is not implemented.");
+    }
+
+    default List<DocumentQuestionAnswerRow> findAssignedQuestionAnswers(long sessionId) {
+        throw new UnsupportedOperationException("findAssignedQuestionAnswers is not implemented.");
+    }
+
     default List<DocumentQuestionAnswerRow> findQuestionAnswers(List<Long> questionIds) {
         throw new UnsupportedOperationException("findQuestionAnswers is not implemented.");
     }

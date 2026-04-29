@@ -51,6 +51,7 @@ public abstract class AbstractMySqlIntegrationTest {
                 "training_feedbacks",
                 "training_scores",
                 "document_answer_logs",
+                "document_session_questions",
                 "document_questions",
                 "focus_reaction_logs",
                 "focus_commands",

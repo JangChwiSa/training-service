@@ -422,11 +422,13 @@ Training Service는 training_db를 사용한다.
 
 ---
 
-## 5.1 훈련 현황 요약 조회
+## 5.1 훈련 수준 조회
 
 ### GET /api/trainings/progress?type={trainingType}
 
-훈련 현황 페이지에서 탭별 요약 정보를 조회한다. 기본 탭은 사회성 훈련이다.
+Asia/Seoul 기준 이번 달 달력월의 완료 이력을 바탕으로 훈련 수준을 조회한다.
+기존 경로와 `type` 파라미터를 유지하지만, 응답은 훈련 현황 요약이 아니라 공통 수준 응답이다.
+기본 탭은 사회성 훈련이다.
 
 ### Query Parameter
 
@@ -437,111 +439,115 @@ Training Service는 training_db를 사용한다.
 ### DB 조회 기준
 
 ```
-SOCIAL   → user_social_progress
-SAFETY   → user_safety_progress
-DOCUMENT → user_document_progress
-FOCUS    → user_focus_progress
+training_session_summaries
+training_sessions (DOCUMENT sub_type 조회용)
+
+WHERE training_session_summaries.user_id = 현재 사용자 ID
+AND training_session_summaries.training_type = type
+AND training_session_summaries.completed_at >= 이번 달 1일 00:00:00
+AND training_session_summaries.completed_at < 다음 달 1일 00:00:00
 ```
 
-### Response - SOCIAL
+### 기간 기준
+
+```
+- timezone: Asia/Seoul
+- periodStart: 이번 달 1일 00:00:00
+- periodEnd: 다음 달 1일 00:00:00 (exclusive)
+```
+
+### 공통 Response
 
 ```json
 {
   "trainingType": "SOCIAL",
-  "recentSessionId": 10,
-  "recentScore": 85,
-  "recentFeedbackSummary": "상황에 맞게 정중하게 대화했습니다.",
+  "level": 4,
+  "periodStart": "2026-04-01T00:00:00",
+  "periodEnd": "2026-05-01T00:00:00",
+  "timezone": "Asia/Seoul",
   "completedCount": 3,
-  "lastCompletedAt": "2026-04-27T10:00:00"
+  "minRequiredCount": 3,
+  "basis": "MONTHLY_COMPLETED_SUMMARIES",
+  "reason": null,
+  "metrics": {
+    "averageScore": 80.0,
+    "monthlyCompletedCount": 3
+  }
 }
 ```
 
-#### SOCIAL 속성 설명
+### 공통 속성 설명
 
 | 속성 | 설명 |
 | --- | --- |
-| `trainingType` | 응답 훈련 유형. 항상 `SOCIAL`이다. |
-| `recentSessionId` | 최근 완료한 사회성 훈련 세션 ID. 완료 기록이 없으면 `null`이다. |
-| `recentScore` | 최근 완료한 사회성 훈련 점수. 0-100 범위이며 기록이 없으면 `null`이다. |
-| `recentFeedbackSummary` | 최근 사회성 훈련의 요약 피드백. 기록이 없으면 `null`이다. |
-| `completedCount` | 완료한 사회성 훈련 누적 횟수. |
-| `lastCompletedAt` | 마지막 사회성 훈련 완료 시각. ISO-8601 LocalDateTime 형식이며 기록이 없으면 `null`이다. |
+| `trainingType` | 응답 훈련 유형. SOCIAL, SAFETY, DOCUMENT, FOCUS 중 하나이다. |
+| `level` | 이번 달 완료 이력으로 산정한 수준. 산정 불가 시 `null`이다. |
+| `periodStart` | 조회 월 시작 시각. Asia/Seoul 기준 ISO-8601 LocalDateTime 형식이다. |
+| `periodEnd` | 조회 월 종료 시각. exclusive이며 Asia/Seoul 기준 ISO-8601 LocalDateTime 형식이다. |
+| `timezone` | 월간 범위를 계산한 타임존. 항상 `Asia/Seoul`이다. |
+| `completedCount` | 이번 달 완료한 해당 훈련 수. |
+| `minRequiredCount` | 수준 산정에 필요한 최소 완료 수. |
+| `basis` | 산정 기준. `MONTHLY_COMPLETED_SUMMARIES`이다. |
+| `reason` | `level`이 `null`인 사유. 예: `NO_MONTHLY_COMPLETION`, `INSUFFICIENT_COMPLETIONS`. 산정 성공 시 `null`이다. |
+| `metrics` | 훈련 유형별 산정 보조 지표이다. |
 
-### Response - SAFETY
+### 점수 기반 레벨 구간
+
+| 점수 | level |
+| --- | --- |
+| 0-39 | 1 |
+| 40-59 | 2 |
+| 60-74 | 3 |
+| 75-89 | 4 |
+| 90-100 | 5 |
+
+### 유형별 산정 규칙
+
+```text
+SOCIAL
+- 이번 달 완료한 사회성 훈련이 3회 이상이면 평균 score로 level 산정
+- 3회 미만이면 level = null
+- metrics: averageScore, monthlyCompletedCount
+
+DOCUMENT
+- 이번 달 완료한 문서 이해 훈련 중 training_sessions.sub_type = LEVEL_n의 최고 난이도를 level로 반환
+- 완료 기록이 없으면 level = null
+- metrics: highestCompletedLevel, monthlyCompletedCount
+
+FOCUS
+- 이번 달 완료한 집중력 훈련 중 training_session_summaries.played_level의 최고값을 level로 반환
+- 완료 기록이 없으면 level = null
+- metrics: highestPlayedLevel, monthlyCompletedCount
+
+SAFETY
+- 이번 달 안전 훈련 완료 3회 이상이면 평균 score로 기본 레벨 산정
+- 커버한 안전 카테고리 수로 상한 적용: 1개 max 2, 2개 max 4, 3개 max 5
+- 최종 level = min(scoreLevel, categoryCap)
+- 3회 미만이면 level = null
+- metrics: averageScore, coveredCategoryCount, coveredCategories, monthlyCompletedCount
+```
+
+### 산정 불가 Response 예시
 
 ```json
 {
   "trainingType": "SAFETY",
-  "recentSessionId": 20,
-  "correctCount": 7,
-  "totalCount": 10,
+  "level": null,
+  "periodStart": "2026-04-01T00:00:00",
+  "periodEnd": "2026-05-01T00:00:00",
+  "timezone": "Asia/Seoul",
   "completedCount": 2,
-  "lastCompletedAt": "2026-04-27T10:20:00"
+  "minRequiredCount": 3,
+  "basis": "MONTHLY_COMPLETED_SUMMARIES",
+  "reason": "INSUFFICIENT_COMPLETIONS",
+  "metrics": {
+    "averageScore": 95.0,
+    "coveredCategoryCount": 2,
+    "coveredCategories": ["COMMUTE_SAFETY", "INFECTIOUS_DISEASE"],
+    "monthlyCompletedCount": 2
+  }
 }
 ```
-
-#### SAFETY 속성 설명
-
-| 속성 | 설명 |
-| --- | --- |
-| `trainingType` | 응답 훈련 유형. 항상 `SAFETY`이다. |
-| `recentSessionId` | 최근 완료한 안전 훈련 세션 ID. 완료 기록이 없으면 `null`이다. |
-| `correctCount` | 최근 완료한 안전 훈련의 정답 선택 수. |
-| `totalCount` | 최근 완료한 안전 훈련의 전체 선택 수. |
-| `completedCount` | 완료한 안전 훈련 누적 횟수. |
-| `lastCompletedAt` | 마지막 안전 훈련 완료 시각. ISO-8601 LocalDateTime 형식이며 기록이 없으면 `null`이다. |
-
-### Response - DOCUMENT
-
-```json
-{
-  "trainingType": "DOCUMENT",
-  "recentSessionId": 30,
-  "correctCount": 8,
-  "totalCount": 10,
-  "recentScore": 80,
-  "completedCount": 4,
-  "lastCompletedAt": "2026-04-27T10:40:00"
-}
-```
-
-#### DOCUMENT 속성 설명
-
-| 속성 | 설명 |
-| --- | --- |
-| `trainingType` | 응답 훈련 유형. 항상 `DOCUMENT`이다. |
-| `recentSessionId` | 최근 완료한 문서 이해 훈련 세션 ID. 완료 기록이 없으면 `null`이다. |
-| `correctCount` | 최근 완료한 문서 이해 훈련의 정답 문제 수. |
-| `totalCount` | 최근 완료한 문서 이해 훈련의 전체 문제 수. |
-| `recentScore` | 최근 완료한 문서 이해 훈련 점수. 0-100 범위이며 기록이 없으면 `null`이다. |
-| `completedCount` | 완료한 문서 이해 훈련 누적 횟수. |
-| `lastCompletedAt` | 마지막 문서 이해 훈련 완료 시각. ISO-8601 LocalDateTime 형식이며 기록이 없으면 `null`이다. |
-
-### Response - FOCUS
-
-```json
-{
-  "trainingType": "FOCUS",
-  "currentLevel": 3,
-  "highestUnlockedLevel": 3,
-  "lastPlayedLevel": 2,
-  "lastAccuracyRate": 92.5,
-  "lastAverageReactionMs": 820,
-  "updatedAt": "2026-04-27T11:00:00"
-}
-```
-
-#### FOCUS 속성 설명
-
-| 속성 | 설명 |
-| --- | --- |
-| `trainingType` | 응답 훈련 유형. 항상 `FOCUS`이다. |
-| `currentLevel` | 사용자의 현재 집중력 훈련 단계. |
-| `highestUnlockedLevel` | 사용자가 플레이할 수 있는 최고 해금 단계. |
-| `lastPlayedLevel` | 가장 최근에 플레이한 집중력 훈련 단계. 기록이 없으면 `null`이다. |
-| `lastAccuracyRate` | 최근 집중력 훈련 정확도. 퍼센트 값이며 기록이 없으면 `null`이다. |
-| `lastAverageReactionMs` | 최근 집중력 훈련 평균 반응 시간. 단위는 밀리초(ms)이며 기록이 없으면 `null`이다. |
-| `updatedAt` | 집중력 진행 상태가 마지막으로 갱신된 시각. ISO-8601 LocalDateTime 형식이다. |
 
 ---
 
@@ -1319,17 +1325,35 @@ TrainingCompleted 이벤트 발행
 
 ### POST /api/trainings/document/sessions
 
-문서 이해 훈련 세션을 생성하고 활성 문서 이해 문제 목록을 반환한다.
+문서 이해 훈련 세션을 생성하고 요청한 레벨의 활성 문서 이해 문제 중 랜덤 배정된 5문제를 반환한다.
+
+### Request
+
+```json
+{
+  "level": 1
+}
+```
+
+### Request Body
+
+| 이름 | 필수 | 설명 |
+| --- | --- | --- |
+| level | Y | 문서 이해 훈련 레벨. 1~5만 허용 |
 
 ### DB 처리
 
 ```
 Gateway가 전달한 X-User-Id를 현재 user_id로 사용
+level을 LEVEL_1~LEVEL_5 difficulty 값으로 변환
+document_questions에서 difficulty와 is_active 기준으로 랜덤 5문제 조회
+5문제 미만이면 CONFLICT 반환
 training_sessions 생성
 user_id = 현재 사용자 ID
 training_type = DOCUMENT
+sub_type = LEVEL_n
 status = IN_PROGRESS
-document_questions에서 활성 문제 조회
+document_session_questions에 배정 문제 5개와 display_order 저장
 ```
 
 ### Response
@@ -1353,7 +1377,7 @@ document_questions에서 활성 문제 조회
 
 ### POST /api/trainings/document/sessions/{sessionId}/answers
 
-문서 이해 훈련 답변을 제출하고 채점 및 완료 처리를 수행한다.
+문서 이해 훈련 답변을 제출하고 세션에 배정된 5문제와 정확히 일치하는지 검증한 뒤 채점 및 완료 처리를 수행한다.
 
 ### Request
 
@@ -1372,7 +1396,9 @@ document_questions에서 활성 문제 조회
 
 ```
 session_id가 현재 user_id의 세션인지 검증
-document_questions 정답 조회
+document_session_questions에서 배정 문제 조회
+제출 questionId 목록이 배정된 5문제와 정확히 일치하는지 검증
+배정된 문제 기준으로 document_questions 정답 조회
 document_answer_logs 저장
 training_scores 저장
   score_type = ACCURACY_RATE
@@ -1382,6 +1408,14 @@ training_session_summaries 생성
 training_sessions.status = COMPLETED
 TrainingCompleted 이벤트 발행
 ```
+
+### Error Cases
+
+| 조건 | 코드 |
+| --- | --- |
+| level이 1~5 범위를 벗어남 | VALIDATION_ERROR |
+| 요청 레벨의 활성 문제가 5개 미만 | CONFLICT |
+| 제출 questionId가 배정된 5문제와 정확히 일치하지 않음 | VALIDATION_ERROR |
 
 ### Response
 
