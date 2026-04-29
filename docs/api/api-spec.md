@@ -547,7 +547,7 @@ FOCUS    → user_focus_progress
 
 ## 5.2 훈련 기록 목록 조회
 
-### GET /api/trainings/sessions?type={trainingType}&category={category}&page={page}&size={size}
+### GET /api/trainings/sessions?type={trainingType}&page={page}&size={size}
 
 사용자가 선택한 훈련 유형의 과거 훈련 기록 목록을 조회한다. 훈련 현황 페이지에서 특정 훈련 탭을 선택했을 때, 해당 훈련의 완료 이력을 카드 또는 리스트 형태로 표시하기 위한 API이다.
 
