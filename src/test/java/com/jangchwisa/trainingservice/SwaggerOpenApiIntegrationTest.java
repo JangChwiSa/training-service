@@ -39,6 +39,11 @@ class SwaggerOpenApiIntegrationTest {
 
         assertThat(body.path("info").path("title").asText()).isEqualTo("Training Service API");
         assertThat(body.path("components").path("securitySchemes").has("TrustedUserHeader")).isTrue();
+        assertThat(body.path("paths")
+                .path("/api/trainings/progress")
+                .path("get")
+                .path("parameters"))
+                .allSatisfy(parameter -> assertThat(parameter.path("name").asText()).isNotEqualTo("currentUser"));
         assertThat(body.path("paths").has("/api/trainings/progress")).isTrue();
         assertThat(body.path("paths").has("/internal/trainings/users/{userId}/summary")).isFalse();
     }
