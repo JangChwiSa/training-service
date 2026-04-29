@@ -15,6 +15,8 @@ import com.jangchwisa.trainingservice.training.safety.dto.NextSafetySceneRespons
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySceneResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySelectedResultResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyChoiceSummaryResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySessionDetailResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.StartSafetySessionResponse;
 import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
@@ -22,6 +24,7 @@ import com.jangchwisa.trainingservice.training.safety.repository.SafetyTrainingR
 import com.jangchwisa.trainingservice.training.safety.repository.SafetyTrainingRepository.SafetyActionSummaryRow;
 import com.jangchwisa.trainingservice.training.safety.repository.SafetyTrainingRepository.SafetyChoiceRow;
 import com.jangchwisa.trainingservice.training.safety.repository.SafetyTrainingRepository.SafetyScenarioSummaryRow;
+import com.jangchwisa.trainingservice.training.safety.repository.SafetyTrainingRepository.SafetyScoreRow;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.session.service.CreateTrainingSessionCommand;
@@ -103,7 +106,18 @@ public class SafetyTrainingService {
     @Transactional(readOnly = true)
     public SafetySessionDetailResponse getSessionDetail(CurrentUser currentUser, long sessionId) {
         sessionOwnershipValidator.validateOwner(sessionId, currentUser);
-        return new SafetySessionDetailResponse(sessionId, safetyTrainingRepository.findActionLogs(sessionId));
+        SafetyScoreRow score = safetyTrainingRepository.findScore(sessionId)
+                .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Safety training score was not found."));
+        SafetyFeedbackResponse feedback = safetyTrainingRepository.findFeedback(sessionId)
+                .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Safety training feedback was not found."));
+
+        return new SafetySessionDetailResponse(
+                sessionId,
+                score.score(),
+                new SafetyChoiceSummaryResponse(score.correctCount(), score.totalCount()),
+                safetyTrainingRepository.findActionDetails(sessionId),
+                feedback
+        );
     }
 
     public CompleteSafetySessionResponse completeSession(CurrentUser currentUser, long sessionId) {

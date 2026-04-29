@@ -1,7 +1,9 @@
 package com.jangchwisa.trainingservice.training.safety.repository;
 
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionLogResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionDetailResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyChoiceResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySceneResponse;
 import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
@@ -34,6 +36,18 @@ public interface SafetyTrainingRepository {
 
     List<SafetyActionLogResponse> findActionLogs(long sessionId);
 
+    default Optional<SafetyScoreRow> findScore(long sessionId) {
+        throw new UnsupportedOperationException("findScore is not implemented.");
+    }
+
+    default Optional<SafetyFeedbackResponse> findFeedback(long sessionId) {
+        throw new UnsupportedOperationException("findFeedback is not implemented.");
+    }
+
+    default List<SafetyActionDetailResponse> findActionDetails(long sessionId) {
+        throw new UnsupportedOperationException("findActionDetails is not implemented.");
+    }
+
     record SafetyChoiceRow(long choiceId, long sceneId, Long nextSceneId, boolean correct) {
     }
 
@@ -41,5 +55,8 @@ public interface SafetyTrainingRepository {
     }
 
     record SafetyActionSummaryRow(int correctCount, int totalCount) {
+    }
+
+    record SafetyScoreRow(int score, int correctCount, int totalCount) {
     }
 }

@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jangchwisa.trainingservice.common.exception.GlobalExceptionHandler;
 import com.jangchwisa.trainingservice.common.security.CurrentUserArgumentResolver;
 import com.jangchwisa.trainingservice.common.security.TrustedUserHeaderProperties;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionDetailResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionLogResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyChoiceResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySceneResponse;
 import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
@@ -120,15 +122,31 @@ class SafetyTrainingControllerTest {
     @Test
     void returnsDetailAfterOwnershipValidation() throws Exception {
         ownershipRepository.save(20L, 1L);
-        safetyRepository.savedActionLogs.add(new SafetyActionLogResponse(1L, 2L, true));
+        safetyRepository.score = Optional.of(new SafetyTrainingRepository.SafetyScoreRow(70, 7, 10));
+        safetyRepository.feedback = Optional.of(new SafetyFeedbackResponse(
+                "대부분의 위험 상황을 올바르게 판단했습니다.",
+                "미끄러운 바닥을 발견했을 때 관리자에게 알린 선택은 적절합니다."
+        ));
+        safetyRepository.actionDetails = List.of(new SafetyActionDetailResponse(
+                1L,
+                "작업장 바닥에 물이 흘러 있습니다.",
+                "관리자에게 알린다",
+                true
+        ));
 
         mockMvc.perform(get("/api/trainings/safety/sessions/20/detail")
                         .header("X-User-Id", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sessionId").value(20))
-                .andExpect(jsonPath("$.data.actionLogs[0].sceneId").value(1))
-                .andExpect(jsonPath("$.data.actionLogs[0].choiceId").value(2))
-                .andExpect(jsonPath("$.data.actionLogs[0].correct").value(true));
+                .andExpect(jsonPath("$.data.score").value(70))
+                .andExpect(jsonPath("$.data.choiceSummary.correctCount").value(7))
+                .andExpect(jsonPath("$.data.choiceSummary.totalCount").value(10))
+                .andExpect(jsonPath("$.data.actions[0].sceneId").value(1))
+                .andExpect(jsonPath("$.data.actions[0].situationText").value("작업장 바닥에 물이 흘러 있습니다."))
+                .andExpect(jsonPath("$.data.actions[0].selectedChoice").value("관리자에게 알린다"))
+                .andExpect(jsonPath("$.data.actions[0].correct").value(true))
+                .andExpect(jsonPath("$.data.feedback.summary").value("대부분의 위험 상황을 올바르게 판단했습니다."))
+                .andExpect(jsonPath("$.data.feedback.detailText").value("미끄러운 바닥을 발견했을 때 관리자에게 알린 선택은 적절합니다."));
     }
 
     @Test
@@ -180,6 +198,9 @@ class SafetyTrainingControllerTest {
         Map<Long, SafetySceneResponse> scenes = new HashMap<>();
         Map<String, SafetyChoiceRow> choices = new HashMap<>();
         List<SafetyActionLogResponse> savedActionLogs = new ArrayList<>();
+        Optional<SafetyScoreRow> score = Optional.empty();
+        Optional<SafetyFeedbackResponse> feedback = Optional.empty();
+        List<SafetyActionDetailResponse> actionDetails = List.of();
         SafetyCategory category;
 
         @Override
@@ -221,6 +242,21 @@ class SafetyTrainingControllerTest {
         @Override
         public List<SafetyActionLogResponse> findActionLogs(long sessionId) {
             return savedActionLogs;
+        }
+
+        @Override
+        public Optional<SafetyScoreRow> findScore(long sessionId) {
+            return score;
+        }
+
+        @Override
+        public Optional<SafetyFeedbackResponse> findFeedback(long sessionId) {
+            return feedback;
+        }
+
+        @Override
+        public List<SafetyActionDetailResponse> findActionDetails(long sessionId) {
+            return actionDetails;
         }
     }
 

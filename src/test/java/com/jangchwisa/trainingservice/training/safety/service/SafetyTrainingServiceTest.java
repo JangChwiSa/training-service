@@ -7,8 +7,10 @@ import com.jangchwisa.trainingservice.common.exception.ErrorCode;
 import com.jangchwisa.trainingservice.common.exception.TrainingServiceException;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
 import com.jangchwisa.trainingservice.training.safety.dto.NextSafetySceneResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionDetailResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionLogResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyChoiceResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySceneResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.StartSafetySessionResponse;
@@ -105,9 +107,17 @@ class SafetyTrainingServiceTest {
     @Test
     void validatesOwnershipWhenReadingDetail() {
         ownershipRepository.save(20L, 1L);
-        safetyRepository.savedActionLogs.add(new SafetyActionLogResponse(1L, 2L, true));
+        safetyRepository.score = Optional.of(new SafetyTrainingRepository.SafetyScoreRow(70, 7, 10));
+        safetyRepository.feedback = Optional.of(new SafetyFeedbackResponse("요약", "상세"));
+        safetyRepository.actionDetails = List.of(new SafetyActionDetailResponse(1L, "상황", "선택", true));
 
-        assertThat(service.getSessionDetail(new CurrentUser(1L), 20L).actionLogs()).hasSize(1);
+        var response = service.getSessionDetail(new CurrentUser(1L), 20L);
+
+        assertThat(response.score()).isEqualTo(70);
+        assertThat(response.choiceSummary().correctCount()).isEqualTo(7);
+        assertThat(response.choiceSummary().totalCount()).isEqualTo(10);
+        assertThat(response.actions()).hasSize(1);
+        assertThat(response.feedback().summary()).isEqualTo("요약");
     }
 
     private SafetySceneResponse scene(long sceneId, boolean endScene) {
@@ -128,6 +138,9 @@ class SafetyTrainingServiceTest {
         Map<Long, SafetySceneResponse> scenes = new HashMap<>();
         Map<String, SafetyChoiceRow> choices = new HashMap<>();
         List<SafetyActionLogResponse> savedActionLogs = new ArrayList<>();
+        Optional<SafetyScoreRow> score = Optional.empty();
+        Optional<SafetyFeedbackResponse> feedback = Optional.empty();
+        List<SafetyActionDetailResponse> actionDetails = List.of();
 
         @Override
         public List<SafetyScenarioListItemResponse> findActiveScenarios(SafetyCategory category) {
@@ -167,6 +180,21 @@ class SafetyTrainingServiceTest {
         @Override
         public List<SafetyActionLogResponse> findActionLogs(long sessionId) {
             return savedActionLogs;
+        }
+
+        @Override
+        public Optional<SafetyScoreRow> findScore(long sessionId) {
+            return score;
+        }
+
+        @Override
+        public Optional<SafetyFeedbackResponse> findFeedback(long sessionId) {
+            return feedback;
+        }
+
+        @Override
+        public List<SafetyActionDetailResponse> findActionDetails(long sessionId) {
+            return actionDetails;
         }
     }
 

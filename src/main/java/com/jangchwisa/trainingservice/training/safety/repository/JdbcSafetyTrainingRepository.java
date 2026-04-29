@@ -1,7 +1,9 @@
 package com.jangchwisa.trainingservice.training.safety.repository;
 
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionLogResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyActionDetailResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyChoiceResponse;
+import com.jangchwisa.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
 import com.jangchwisa.trainingservice.training.safety.dto.SafetySceneResponse;
 import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
@@ -171,6 +173,60 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
         return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SafetyActionLogResponse(
                 resultSet.getLong("scene_id"),
                 resultSet.getLong("choice_id"),
+                resultSet.getBoolean("is_correct")
+        ), sessionId);
+    }
+
+    @Override
+    public Optional<SafetyScoreRow> findScore(long sessionId) {
+        String sql = """
+                SELECT score, correct_count, total_count
+                FROM training_scores
+                WHERE session_id = ?
+                """;
+        List<SafetyScoreRow> scores = jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SafetyScoreRow(
+                resultSet.getInt("score"),
+                resultSet.getInt("correct_count"),
+                resultSet.getInt("total_count")
+        ), sessionId);
+        return scores.stream().findFirst();
+    }
+
+    @Override
+    public Optional<SafetyFeedbackResponse> findFeedback(long sessionId) {
+        String sql = """
+                SELECT summary, detail_text
+                FROM training_feedbacks
+                WHERE session_id = ?
+                  AND feedback_type = 'SUMMARY'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """;
+        List<SafetyFeedbackResponse> feedbacks = jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SafetyFeedbackResponse(
+                resultSet.getString("summary"),
+                resultSet.getString("detail_text")
+        ), sessionId);
+        return feedbacks.stream().findFirst();
+    }
+
+    @Override
+    public List<SafetyActionDetailResponse> findActionDetails(long sessionId) {
+        String sql = """
+                SELECT action.scene_id,
+                       scene.situation_text,
+                       choice.choice_text,
+                       action.is_correct
+                FROM safety_action_logs action
+                JOIN safety_scenes scene ON scene.scene_id = action.scene_id
+                JOIN safety_choices choice ON choice.choice_id = action.choice_id
+                    AND choice.scene_id = action.scene_id
+                WHERE action.session_id = ?
+                ORDER BY action.action_id ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SafetyActionDetailResponse(
+                resultSet.getLong("scene_id"),
+                resultSet.getString("situation_text"),
+                resultSet.getString("choice_text"),
                 resultSet.getBoolean("is_correct")
         ), sessionId);
     }
