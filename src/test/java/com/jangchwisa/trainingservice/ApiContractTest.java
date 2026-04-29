@@ -82,7 +82,7 @@ class ApiContractTest {
     @Test
     void sessionListApiMatchesContractAndUsesTrustedHeaderUserId() throws Exception {
         TrainingSessionListService service = mock(TrainingSessionListService.class);
-        when(service.getSessions(7L, TrainingType.SAFETY, SafetyCategory.COMMUTE_SAFETY, 1, 5))
+        when(service.getSessions(7L, TrainingType.SAFETY, 1, 5))
                 .thenReturn(new TrainingSessionListResponse(
                         TrainingType.SAFETY,
                         1,
@@ -108,7 +108,6 @@ class ApiContractTest {
         mockMvc(new TrainingSessionListController(service))
                 .perform(get("/api/trainings/sessions")
                         .param("type", "SAFETY")
-                        .param("category", "COMMUTE_SAFETY")
                         .param("page", "1")
                         .param("size", "5")
                         .param("userId", "999")
@@ -128,7 +127,7 @@ class ApiContractTest {
                 .andExpect(jsonPath("$.data.sessions[0].totalCount").value(10))
                 .andExpect(jsonPath("$.data.sessions[0].completedAt").value("2026-04-27T10:20:00"));
 
-        verify(service).getSessions(7L, TrainingType.SAFETY, SafetyCategory.COMMUTE_SAFETY, 1, 5);
+        verify(service).getSessions(7L, TrainingType.SAFETY, 1, 5);
     }
 
     @Test

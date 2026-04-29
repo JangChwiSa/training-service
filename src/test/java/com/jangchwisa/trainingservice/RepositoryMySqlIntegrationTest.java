@@ -65,7 +65,7 @@ class RepositoryMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void summaryRepositoryCountsAndListsSnapshotsByUserTypeAndCategory() {
+    void summaryRepositoryCountsAndListsSnapshotsByUserAndType() {
         TrainingSession safetySession = trainingSessionRepository.save(TrainingSession.start(
                 1L,
                 TrainingType.SAFETY,
@@ -95,13 +95,11 @@ class RepositoryMySqlIntegrationTest extends AbstractMySqlIntegrationTest {
 
         long count = trainingSessionSummaryRepository.countByUserIdAndTrainingType(
                 1L,
-                TrainingType.SAFETY,
-                SafetyCategory.COMMUTE_SAFETY
+                TrainingType.SAFETY
         );
         List<TrainingSessionListItemResponse> sessions = trainingSessionSummaryRepository.findByUserIdAndTrainingType(
                 1L,
                 TrainingType.SAFETY,
-                SafetyCategory.COMMUTE_SAFETY,
                 0,
                 10
         );

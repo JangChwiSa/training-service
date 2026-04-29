@@ -292,8 +292,7 @@ class DocumentTrainingServiceTest {
         @Override
         public long countByUserIdAndTrainingType(
                 long userId,
-                TrainingType trainingType,
-                com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory category
+                TrainingType trainingType
         ) {
             return 0;
         }
@@ -302,7 +301,6 @@ class DocumentTrainingServiceTest {
         public List<com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListItemResponse> findByUserIdAndTrainingType(
                 long userId,
                 TrainingType trainingType,
-                com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory category,
                 int page,
                 int size
         ) {

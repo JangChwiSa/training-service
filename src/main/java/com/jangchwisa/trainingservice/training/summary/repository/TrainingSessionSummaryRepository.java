@@ -1,6 +1,5 @@
 package com.jangchwisa.trainingservice.training.summary.repository;
 
-import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListItemResponse;
 import com.jangchwisa.trainingservice.training.summary.entity.TrainingSessionSummary;
@@ -12,12 +11,11 @@ public interface TrainingSessionSummaryRepository {
         throw new UnsupportedOperationException("save is not implemented.");
     }
 
-    long countByUserIdAndTrainingType(long userId, TrainingType trainingType, SafetyCategory category);
+    long countByUserIdAndTrainingType(long userId, TrainingType trainingType);
 
     List<TrainingSessionListItemResponse> findByUserIdAndTrainingType(
             long userId,
             TrainingType trainingType,
-            SafetyCategory category,
             int page,
             int size
     );

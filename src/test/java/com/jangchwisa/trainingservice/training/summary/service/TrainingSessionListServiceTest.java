@@ -2,7 +2,6 @@ package com.jangchwisa.trainingservice.training.summary.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListItemResponse;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListResponse;
@@ -35,7 +34,7 @@ class TrainingSessionListServiceTest {
                 LocalDateTime.of(2026, 4, 27, 10, 0)
         ));
 
-        TrainingSessionListResponse response = service.getSessions(1L, TrainingType.SOCIAL, null, 0, 10);
+        TrainingSessionListResponse response = service.getSessions(1L, TrainingType.SOCIAL, 0, 10);
 
         assertThat(response.trainingType()).isEqualTo(TrainingType.SOCIAL);
         assertThat(response.page()).isZero();
@@ -45,25 +44,21 @@ class TrainingSessionListServiceTest {
     }
 
     @Test
-    void appliesCategoryOnlyForSafetyTraining() {
-        service.getSessions(1L, TrainingType.SOCIAL, SafetyCategory.COMMUTE_SAFETY, 0, 10);
+    void queriesByTrainingTypeWithoutCategoryFilter() {
+        service.getSessions(1L, TrainingType.SAFETY, 0, 10);
 
-        assertThat(repository.category).isNull();
-
-        service.getSessions(1L, TrainingType.SAFETY, SafetyCategory.COMMUTE_SAFETY, 0, 10);
-
-        assertThat(repository.category).isEqualTo(SafetyCategory.COMMUTE_SAFETY);
+        assertThat(repository.trainingType).isEqualTo(TrainingType.SAFETY);
     }
 
     static class FakeTrainingSessionSummaryRepository implements TrainingSessionSummaryRepository {
 
         long totalElements;
         List<TrainingSessionListItemResponse> sessions = List.of();
-        SafetyCategory category;
+        TrainingType trainingType;
 
         @Override
-        public long countByUserIdAndTrainingType(long userId, TrainingType trainingType, SafetyCategory category) {
-            this.category = category;
+        public long countByUserIdAndTrainingType(long userId, TrainingType trainingType) {
+            this.trainingType = trainingType;
             return totalElements;
         }
 
@@ -71,11 +66,10 @@ class TrainingSessionListServiceTest {
         public List<TrainingSessionListItemResponse> findByUserIdAndTrainingType(
                 long userId,
                 TrainingType trainingType,
-                SafetyCategory category,
                 int page,
                 int size
         ) {
-            this.category = category;
+            this.trainingType = trainingType;
             return sessions;
         }
     }

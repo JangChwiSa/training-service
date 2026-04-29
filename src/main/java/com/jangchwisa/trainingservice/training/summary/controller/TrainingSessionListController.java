@@ -5,7 +5,6 @@ import com.jangchwisa.trainingservice.common.exception.TrainingServiceException;
 import com.jangchwisa.trainingservice.common.response.ApiResponse;
 import com.jangchwisa.trainingservice.common.security.AuthenticatedUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
-import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListResponse;
 import com.jangchwisa.trainingservice.training.summary.service.TrainingSessionListService;
@@ -30,29 +29,25 @@ public class TrainingSessionListController {
 
     @Operation(
             summary = "훈련 기록 목록 조회",
-            description = "선택한 훈련 유형의 완료 이력을 최신순으로 조회합니다. 안전 훈련은 category로 추가 필터링할 수 있습니다."
+            description = "선택한 훈련 유형의 완료 이력을 최신순으로 조회합니다."
     )
     @GetMapping("/api/trainings/sessions")
     public ApiResponse<TrainingSessionListResponse> getSessions(
             @AuthenticatedUser CurrentUser currentUser,
             @Parameter(description = "조회할 훈련 유형입니다. SOCIAL, SAFETY, DOCUMENT, FOCUS 중 하나를 입력합니다.", example = "SOCIAL")
             @RequestParam String type,
-            @Parameter(description = "안전 훈련 카테고리 필터입니다. type이 SAFETY일 때만 의미가 있으며, 비우면 전체를 조회합니다.", example = "COMMUTE_SAFETY")
-            @RequestParam(required = false) String category,
             @Parameter(description = "페이지 번호입니다. 0부터 시작합니다.", example = "0")
             @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지당 항목 수입니다. 1부터 100까지 입력할 수 있습니다.", example = "10")
             @RequestParam(required = false) Integer size
     ) {
         TrainingType trainingType = parseTrainingType(type);
-        SafetyCategory safetyCategory = parseSafetyCategory(category);
         int pageNumber = normalizePage(page);
         int pageSize = normalizeSize(size);
 
         TrainingSessionListResponse response = trainingSessionListService.getSessions(
                 currentUser.userId(),
                 trainingType,
-                safetyCategory,
                 pageNumber,
                 pageSize
         );
@@ -68,18 +63,6 @@ public class TrainingSessionListController {
             return TrainingType.valueOf(type.trim().toUpperCase());
         } catch (IllegalArgumentException exception) {
             throw new TrainingServiceException(ErrorCode.VALIDATION_ERROR, "Training type is invalid.");
-        }
-    }
-
-    private SafetyCategory parseSafetyCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return null;
-        }
-
-        try {
-            return SafetyCategory.valueOf(category.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            throw new TrainingServiceException(ErrorCode.VALIDATION_ERROR, "Safety category is invalid.");
         }
     }
 

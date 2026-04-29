@@ -1,6 +1,5 @@
 package com.jangchwisa.trainingservice.training.summary.service;
 
-import com.jangchwisa.trainingservice.training.safety.entity.SafetyCategory;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListItemResponse;
 import com.jangchwisa.trainingservice.training.summary.dto.TrainingSessionListResponse;
@@ -22,20 +21,16 @@ public class TrainingSessionListService {
     public TrainingSessionListResponse getSessions(
             long userId,
             TrainingType trainingType,
-            SafetyCategory category,
             int page,
             int size
     ) {
-        SafetyCategory categoryFilter = trainingType == TrainingType.SAFETY ? category : null;
         long totalElements = trainingSessionSummaryRepository.countByUserIdAndTrainingType(
                 userId,
-                trainingType,
-                categoryFilter
+                trainingType
         );
         List<TrainingSessionListItemResponse> sessions = trainingSessionSummaryRepository.findByUserIdAndTrainingType(
                 userId,
                 trainingType,
-                categoryFilter,
                 page,
                 size
         );

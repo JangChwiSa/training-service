@@ -54,15 +54,14 @@ public class JdbcTrainingSessionSummaryRepository implements TrainingSessionSumm
     }
 
     @Override
-    public long countByUserIdAndTrainingType(long userId, TrainingType trainingType, SafetyCategory category) {
+    public long countByUserIdAndTrainingType(long userId, TrainingType trainingType) {
         QueryParts queryParts = buildQuery(
                 """
                 SELECT COUNT(*)
                 FROM training_session_summaries
                 """,
                 userId,
-                trainingType,
-                category
+                trainingType
         );
         Long count = jdbcTemplate.queryForObject(queryParts.sql(), Long.class, queryParts.parameters().toArray());
         return count == null ? 0 : count;
@@ -72,7 +71,6 @@ public class JdbcTrainingSessionSummaryRepository implements TrainingSessionSumm
     public List<TrainingSessionListItemResponse> findByUserIdAndTrainingType(
             long userId,
             TrainingType trainingType,
-            SafetyCategory category,
             int page,
             int size
     ) {
@@ -84,8 +82,7 @@ public class JdbcTrainingSessionSummaryRepository implements TrainingSessionSumm
                 FROM training_session_summaries
                 """,
                 userId,
-                trainingType,
-                category
+                trainingType
         );
         String sql = queryParts.sql() + """
 
@@ -113,7 +110,7 @@ public class JdbcTrainingSessionSummaryRepository implements TrainingSessionSumm
         ), parameters.toArray());
     }
 
-    private QueryParts buildQuery(String selectClause, long userId, TrainingType trainingType, SafetyCategory category) {
+    private QueryParts buildQuery(String selectClause, long userId, TrainingType trainingType) {
         StringBuilder sql = new StringBuilder(selectClause)
                 .append("""
                 WHERE user_id = ?
@@ -122,11 +119,6 @@ public class JdbcTrainingSessionSummaryRepository implements TrainingSessionSumm
         List<Object> parameters = new ArrayList<>();
         parameters.add(userId);
         parameters.add(trainingType.name());
-
-        if (trainingType == TrainingType.SAFETY && category != null) {
-            sql.append("  AND category = ?\n");
-            parameters.add(category.name());
-        }
 
         return new QueryParts(sql.toString(), parameters);
     }

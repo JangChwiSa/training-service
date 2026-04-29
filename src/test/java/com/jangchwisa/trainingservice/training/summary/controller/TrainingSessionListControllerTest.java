@@ -72,7 +72,7 @@ class TrainingSessionListControllerTest {
     }
 
     @Test
-    void returnsSafetySessionListWithCategoryFilter() throws Exception {
+    void returnsSafetySessionList() throws Exception {
         repository.totalElements = 1L;
         repository.sessions = List.of(new TrainingSessionListItemResponse(
                 20L,
@@ -92,7 +92,6 @@ class TrainingSessionListControllerTest {
 
         mockMvc.perform(get("/api/trainings/sessions")
                         .param("type", "SAFETY")
-                        .param("category", "COMMUTE_SAFETY")
                         .param("page", "1")
                         .param("size", "5")
                         .header("X-User-Id", "7"))
@@ -106,7 +105,6 @@ class TrainingSessionListControllerTest {
 
         org.assertj.core.api.Assertions.assertThat(repository.userId).isEqualTo(7L);
         org.assertj.core.api.Assertions.assertThat(repository.trainingType).isEqualTo(TrainingType.SAFETY);
-        org.assertj.core.api.Assertions.assertThat(repository.category).isEqualTo(SafetyCategory.COMMUTE_SAFETY);
         org.assertj.core.api.Assertions.assertThat(repository.page).isEqualTo(1);
         org.assertj.core.api.Assertions.assertThat(repository.size).isEqualTo(5);
     }
@@ -167,15 +165,13 @@ class TrainingSessionListControllerTest {
         List<TrainingSessionListItemResponse> sessions = List.of();
         long userId;
         TrainingType trainingType;
-        SafetyCategory category;
         int page;
         int size;
 
         @Override
-        public long countByUserIdAndTrainingType(long userId, TrainingType trainingType, SafetyCategory category) {
+        public long countByUserIdAndTrainingType(long userId, TrainingType trainingType) {
             this.userId = userId;
             this.trainingType = trainingType;
-            this.category = category;
             return totalElements;
         }
 
@@ -183,13 +179,11 @@ class TrainingSessionListControllerTest {
         public List<TrainingSessionListItemResponse> findByUserIdAndTrainingType(
                 long userId,
                 TrainingType trainingType,
-                SafetyCategory category,
                 int page,
                 int size
         ) {
             this.userId = userId;
             this.trainingType = trainingType;
-            this.category = category;
             this.page = page;
             this.size = size;
             return sessions;
