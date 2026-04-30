@@ -21,6 +21,7 @@ import com.jangchwisa.trainingservice.training.focus.dto.CompleteFocusSessionRes
 import com.jangchwisa.trainingservice.training.focus.service.FocusTrainingService;
 import com.jangchwisa.trainingservice.training.progress.controller.TrainingProgressController;
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingLevelResponse;
+import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressSummaryResponse;
 import com.jangchwisa.trainingservice.training.progress.service.TrainingProgressService;
 import com.jangchwisa.trainingservice.training.safety.controller.SafetyTrainingController;
 import com.jangchwisa.trainingservice.training.safety.dto.CompleteSafetySessionResponse;
@@ -88,6 +89,58 @@ class ApiContractTest {
                 .andExpect(jsonPath("$.data.metrics.averageScore").value(80.0));
 
         verify(service).getProgress(7L, TrainingType.SOCIAL);
+    }
+
+    @Test
+    void progressSummaryApiMatchesContractAndUsesTrustedHeaderUserId() throws Exception {
+        TrainingProgressService service = mock(TrainingProgressService.class);
+        when(service.getProgressSummary(7L)).thenReturn(new TrainingProgressSummaryResponse(
+                LocalDateTime.of(2026, 4, 1, 0, 0),
+                LocalDateTime.of(2026, 5, 1, 0, 0),
+                "Asia/Seoul",
+                List.of(
+                        new TrainingLevelResponse(
+                                TrainingType.SOCIAL,
+                                4,
+                                LocalDateTime.of(2026, 4, 1, 0, 0),
+                                LocalDateTime.of(2026, 5, 1, 0, 0),
+                                "Asia/Seoul",
+                                3,
+                                3,
+                                "MONTHLY_COMPLETED_SUMMARIES",
+                                null,
+                                Map.of("averageScore", BigDecimal.valueOf(80.0), "monthlyCompletedCount", 3)
+                        ),
+                        new TrainingLevelResponse(
+                                TrainingType.FOCUS,
+                                2,
+                                LocalDateTime.of(2026, 4, 1, 0, 0),
+                                LocalDateTime.of(2026, 5, 1, 0, 0),
+                                "Asia/Seoul",
+                                1,
+                                1,
+                                "MONTHLY_COMPLETED_SUMMARIES",
+                                null,
+                                Map.of("highestPlayedLevel", 2, "monthlyCompletedCount", 1)
+                        )
+                )
+        ));
+
+        mockMvc(new TrainingProgressController(service))
+                .perform(get("/api/trainings/progress/summary")
+                        .param("userId", "999")
+                        .header("X-User-Id", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.periodStart").value("2026-04-01T00:00:00"))
+                .andExpect(jsonPath("$.data.periodEnd").value("2026-05-01T00:00:00"))
+                .andExpect(jsonPath("$.data.timezone").value("Asia/Seoul"))
+                .andExpect(jsonPath("$.data.items[0].trainingType").value("SOCIAL"))
+                .andExpect(jsonPath("$.data.items[0].level").value(4))
+                .andExpect(jsonPath("$.data.items[1].trainingType").value("FOCUS"))
+                .andExpect(jsonPath("$.data.items[1].level").value(2));
+
+        verify(service).getProgressSummary(7L);
     }
 
     @Test

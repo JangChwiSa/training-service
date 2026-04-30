@@ -219,6 +219,25 @@
         GW-->>Nginx: 응답 전달
         Nginx-->>Browser: 수준 응답
         Browser-->>User: 사회성 이번 달 훈련 수준 표시
+
+        ## 1-A. 홈 화면 전체 수준 요약 조회
+        opt 홈 화면 표시
+            Browser->>Nginx: 홈 화면 훈련 수준 요약 조회 요청
+            Nginx->>GW: 요청 전달
+            GW->>TS: GET /api/trainings/progress/summary
+            TS->>TS: Asia/Seoul 기준 이번 달 범위 계산
+            loop SOCIAL, SAFETY, DOCUMENT, FOCUS
+                TS->>TDB: training_session_summaries 완료 이력 조회
+                opt DOCUMENT
+                    TS->>TDB: training_sessions.sub_type에서 완료한 최고 LEVEL_n 확인
+                end
+                TS->>TS: 유형별 규칙으로 level/reason/metrics 산정
+            end
+            TS-->>GW: 홈 화면 훈련 수준 요약 응답
+            GW-->>Nginx: 응답 전달
+            Nginx-->>Browser: 요약 응답
+            Browser-->>User: 훈련 유형별 성취 레벨 표시
+        end
     
         ## 2. 다른 훈련 유형 탭 선택
         opt 훈련 유형 탭 선택

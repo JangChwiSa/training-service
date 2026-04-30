@@ -3,6 +3,7 @@ package com.jangchwisa.trainingservice.training.progress.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingLevelResponse;
+import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressSummaryResponse;
 import com.jangchwisa.trainingservice.training.progress.entity.MonthlyTrainingSummaryEntry;
 import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
@@ -12,7 +13,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class TrainingProgressServiceTest {
@@ -122,6 +125,34 @@ class TrainingProgressServiceTest {
         assertThat(repository.periodEnd).isEqualTo(LocalDateTime.of(2026, 5, 1, 0, 0));
     }
 
+    @Test
+    void returnsHomeSummaryForAllTrainingTypes() {
+        repository.entriesByType.put(TrainingType.SOCIAL, List.of(
+                entry(70, null, null, null),
+                entry(80, null, null, null),
+                entry(90, null, null, null)
+        ));
+        repository.entriesByType.put(TrainingType.SAFETY, List.of(
+                entry(95, "COMMUTE_SAFETY", null, null),
+                entry(95, "INFECTIOUS_DISEASE", null, null),
+                entry(95, "COMMUTE_SAFETY", null, null)
+        ));
+        repository.entriesByType.put(TrainingType.DOCUMENT, List.of(entry(70, null, null, "LEVEL_3")));
+        repository.entriesByType.put(TrainingType.FOCUS, List.of(entry(70, null, 2, null)));
+
+        TrainingProgressSummaryResponse response = service.getProgressSummary(12L);
+
+        assertThat(response.periodStart()).isEqualTo(LocalDateTime.of(2026, 4, 1, 0, 0));
+        assertThat(response.periodEnd()).isEqualTo(LocalDateTime.of(2026, 5, 1, 0, 0));
+        assertThat(response.timezone()).isEqualTo("Asia/Seoul");
+        assertThat(response.items()).extracting(TrainingLevelResponse::trainingType)
+                .containsExactly(TrainingType.SOCIAL, TrainingType.SAFETY, TrainingType.DOCUMENT, TrainingType.FOCUS);
+        assertThat(response.items()).extracting(TrainingLevelResponse::level)
+                .containsExactly(4, 4, 3, 2);
+        assertThat(repository.queriedTypes)
+                .containsExactly(TrainingType.SOCIAL, TrainingType.SAFETY, TrainingType.DOCUMENT, TrainingType.FOCUS);
+    }
+
     private static MonthlyTrainingSummaryEntry entry(Integer score, String category, Integer playedLevel, String subType) {
         return new MonthlyTrainingSummaryEntry(score, category, playedLevel, subType);
     }
@@ -129,6 +160,8 @@ class TrainingProgressServiceTest {
     static class FakeTrainingProgressRepository implements TrainingProgressRepository {
 
         List<MonthlyTrainingSummaryEntry> entries = new ArrayList<>();
+        Map<TrainingType, List<MonthlyTrainingSummaryEntry>> entriesByType = new EnumMap<>(TrainingType.class);
+        List<TrainingType> queriedTypes = new ArrayList<>();
         long userId;
         TrainingType trainingType;
         LocalDateTime periodStart;
@@ -145,7 +178,8 @@ class TrainingProgressServiceTest {
             this.trainingType = trainingType;
             this.periodStart = periodStart;
             this.periodEnd = periodEnd;
-            return entries;
+            this.queriedTypes.add(trainingType);
+            return entriesByType.getOrDefault(trainingType, entries);
         }
     }
 }

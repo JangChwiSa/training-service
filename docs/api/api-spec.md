@@ -527,6 +527,78 @@ SAFETY
 - metrics: averageScore, coveredCategoryCount, coveredCategories, monthlyCompletedCount
 ```
 
+### GET /api/trainings/progress/summary
+
+홈 화면에서 여러 훈련 유형의 성취 레벨을 한 번에 표시하기 위한 API이다.
+각 항목의 산정 규칙은 `GET /api/trainings/progress?type={trainingType}`와 동일하며,
+Training Service는 SOCIAL, SAFETY, DOCUMENT, FOCUS 순서로 월간 수준을 반환한다.
+
+### DB 조회 기준
+
+```text
+training_session_summaries
+training_sessions (DOCUMENT sub_type 조회용)
+
+WHERE training_session_summaries.user_id = 현재 사용자 ID
+AND training_session_summaries.training_type IN (SOCIAL, SAFETY, DOCUMENT, FOCUS)
+AND training_session_summaries.completed_at >= 이번 달 1일 00:00:00
+AND training_session_summaries.completed_at < 다음 달 1일 00:00:00
+```
+
+구현은 훈련 유형별 산정 로직을 재사용한다. API 호출 수를 줄이기 위한 홈 화면 전용 조회 API이며,
+별도 월간 집계 테이블을 생성하지 않는다.
+
+### Response
+
+```json
+{
+  "periodStart": "2026-04-01T00:00:00",
+  "periodEnd": "2026-05-01T00:00:00",
+  "timezone": "Asia/Seoul",
+  "items": [
+    {
+      "trainingType": "SOCIAL",
+      "level": 4,
+      "periodStart": "2026-04-01T00:00:00",
+      "periodEnd": "2026-05-01T00:00:00",
+      "timezone": "Asia/Seoul",
+      "completedCount": 3,
+      "minRequiredCount": 3,
+      "basis": "MONTHLY_COMPLETED_SUMMARIES",
+      "reason": null,
+      "metrics": {
+        "averageScore": 80.0,
+        "monthlyCompletedCount": 3
+      }
+    },
+    {
+      "trainingType": "FOCUS",
+      "level": 2,
+      "periodStart": "2026-04-01T00:00:00",
+      "periodEnd": "2026-05-01T00:00:00",
+      "timezone": "Asia/Seoul",
+      "completedCount": 1,
+      "minRequiredCount": 1,
+      "basis": "MONTHLY_COMPLETED_SUMMARIES",
+      "reason": null,
+      "metrics": {
+        "highestPlayedLevel": 2,
+        "monthlyCompletedCount": 1
+      }
+    }
+  ]
+}
+```
+
+### 속성 설명
+
+| 속성 | 설명 |
+| --- | --- |
+| `periodStart` | 조회 월 시작 시각. Asia/Seoul 기준 ISO-8601 LocalDateTime 형식이다. |
+| `periodEnd` | 조회 월 종료 시각. exclusive이며 Asia/Seoul 기준 ISO-8601 LocalDateTime 형식이다. |
+| `timezone` | 월간 범위를 계산한 타임존. 항상 `Asia/Seoul`이다. |
+| `items` | SOCIAL, SAFETY, DOCUMENT, FOCUS 순서의 월간 수준 응답 목록이다. 각 항목 구조는 단건 progress API 응답과 동일하다. |
+
 ### 산정 불가 Response 예시
 
 ```json

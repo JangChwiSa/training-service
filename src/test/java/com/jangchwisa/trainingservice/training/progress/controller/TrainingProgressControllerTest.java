@@ -15,7 +15,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -82,6 +84,42 @@ class TrainingProgressControllerTest {
     }
 
     @Test
+    void returnsHomeProgressSummaryForAllTrainingTypes() throws Exception {
+        repository.entriesByType.put(TrainingType.SOCIAL, List.of(
+                new MonthlyTrainingSummaryEntry(70, null, null, null),
+                new MonthlyTrainingSummaryEntry(80, null, null, null),
+                new MonthlyTrainingSummaryEntry(90, null, null, null)
+        ));
+        repository.entriesByType.put(TrainingType.SAFETY, List.of(
+                new MonthlyTrainingSummaryEntry(95, "COMMUTE_SAFETY", null, null),
+                new MonthlyTrainingSummaryEntry(95, "INFECTIOUS_DISEASE", null, null),
+                new MonthlyTrainingSummaryEntry(95, "COMMUTE_SAFETY", null, null)
+        ));
+        repository.entriesByType.put(TrainingType.DOCUMENT, List.of(
+                new MonthlyTrainingSummaryEntry(70, null, null, "LEVEL_3")
+        ));
+        repository.entriesByType.put(TrainingType.FOCUS, List.of(
+                new MonthlyTrainingSummaryEntry(70, null, 2, null)
+        ));
+
+        mockMvc.perform(get("/api/trainings/progress/summary")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.periodStart").value("2026-04-01T00:00:00"))
+                .andExpect(jsonPath("$.data.periodEnd").value("2026-05-01T00:00:00"))
+                .andExpect(jsonPath("$.data.timezone").value("Asia/Seoul"))
+                .andExpect(jsonPath("$.data.items[0].trainingType").value("SOCIAL"))
+                .andExpect(jsonPath("$.data.items[0].level").value(4))
+                .andExpect(jsonPath("$.data.items[1].trainingType").value("SAFETY"))
+                .andExpect(jsonPath("$.data.items[1].level").value(4))
+                .andExpect(jsonPath("$.data.items[2].trainingType").value("DOCUMENT"))
+                .andExpect(jsonPath("$.data.items[2].level").value(3))
+                .andExpect(jsonPath("$.data.items[3].trainingType").value("FOCUS"))
+                .andExpect(jsonPath("$.data.items[3].level").value(2));
+    }
+
+    @Test
     void returnsValidationErrorForInvalidType() throws Exception {
         mockMvc.perform(get("/api/trainings/progress")
                         .param("type", "VOICE")
@@ -103,6 +141,7 @@ class TrainingProgressControllerTest {
     static class FakeTrainingProgressRepository implements TrainingProgressRepository {
 
         List<MonthlyTrainingSummaryEntry> entries = List.of();
+        Map<TrainingType, List<MonthlyTrainingSummaryEntry>> entriesByType = new EnumMap<>(TrainingType.class);
 
         @Override
         public List<MonthlyTrainingSummaryEntry> findMonthlyCompletedSummaries(
@@ -111,7 +150,7 @@ class TrainingProgressControllerTest {
                 LocalDateTime periodStart,
                 LocalDateTime periodEnd
         ) {
-            return entries;
+            return entriesByType.getOrDefault(trainingType, entries);
         }
     }
 }

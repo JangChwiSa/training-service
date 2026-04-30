@@ -2,6 +2,7 @@ package com.jangchwisa.trainingservice.training.progress.service;
 
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingLevelResponse;
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressSummaryResponse;
 import com.jangchwisa.trainingservice.training.progress.entity.MonthlyTrainingSummaryEntry;
 import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
@@ -43,21 +44,42 @@ public class TrainingProgressService {
 
     @Transactional(readOnly = true)
     public TrainingProgressResponse getProgress(long userId, TrainingType trainingType) {
-        LocalDate firstDay = LocalDate.now(clock.withZone(MONTHLY_ZONE)).withDayOfMonth(1);
-        LocalDateTime periodStart = firstDay.atStartOfDay();
-        LocalDateTime periodEnd = firstDay.plusMonths(1).atStartOfDay();
+        MonthlyPeriod period = monthlyPeriod();
+        return getProgress(userId, trainingType, period);
+    }
+
+    @Transactional(readOnly = true)
+    public TrainingProgressSummaryResponse getProgressSummary(long userId) {
+        MonthlyPeriod period = monthlyPeriod();
+        List<TrainingLevelResponse> items = List.of(
+                getProgress(userId, TrainingType.SOCIAL, period),
+                getProgress(userId, TrainingType.SAFETY, period),
+                getProgress(userId, TrainingType.DOCUMENT, period),
+                getProgress(userId, TrainingType.FOCUS, period)
+        );
+        return new TrainingProgressSummaryResponse(period.start(), period.end(), TIMEZONE, items);
+    }
+
+    private TrainingLevelResponse getProgress(long userId, TrainingType trainingType, MonthlyPeriod period) {
         List<MonthlyTrainingSummaryEntry> entries = trainingProgressRepository.findMonthlyCompletedSummaries(
                 userId,
                 trainingType,
-                periodStart,
-                periodEnd
+                period.start(),
+                period.end()
         );
         return switch (trainingType) {
-            case SOCIAL -> socialLevel(trainingType, periodStart, periodEnd, entries);
-            case SAFETY -> safetyLevel(trainingType, periodStart, periodEnd, entries);
-            case DOCUMENT -> documentLevel(trainingType, periodStart, periodEnd, entries);
-            case FOCUS -> focusLevel(trainingType, periodStart, periodEnd, entries);
+            case SOCIAL -> socialLevel(trainingType, period.start(), period.end(), entries);
+            case SAFETY -> safetyLevel(trainingType, period.start(), period.end(), entries);
+            case DOCUMENT -> documentLevel(trainingType, period.start(), period.end(), entries);
+            case FOCUS -> focusLevel(trainingType, period.start(), period.end(), entries);
         };
+    }
+
+    private MonthlyPeriod monthlyPeriod() {
+        LocalDate firstDay = LocalDate.now(clock.withZone(MONTHLY_ZONE)).withDayOfMonth(1);
+        LocalDateTime periodStart = firstDay.atStartOfDay();
+        LocalDateTime periodEnd = firstDay.plusMonths(1).atStartOfDay();
+        return new MonthlyPeriod(periodStart, periodEnd);
     }
 
     private static TrainingLevelResponse socialLevel(
@@ -240,5 +262,8 @@ public class TrainingProgressService {
 
     private static Map<String, Object> orderedMetrics() {
         return new LinkedHashMap<>();
+    }
+
+    private record MonthlyPeriod(LocalDateTime start, LocalDateTime end) {
     }
 }

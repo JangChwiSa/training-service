@@ -6,6 +6,7 @@ import com.jangchwisa.trainingservice.common.response.ApiResponse;
 import com.jangchwisa.trainingservice.common.security.AuthenticatedUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressSummaryResponse;
 import com.jangchwisa.trainingservice.training.progress.service.TrainingProgressService;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,18 @@ public class TrainingProgressController {
     ) {
         TrainingType trainingType = parseTrainingType(type);
         TrainingProgressResponse response = trainingProgressService.getProgress(currentUser.userId(), trainingType);
+        return ApiResponse.success(response);
+    }
+
+    @Operation(
+            summary = "홈 화면 훈련 수준 요약 조회",
+            description = "Asia/Seoul 기준 이번 달 완료 이력을 바탕으로 홈 화면에 표시할 모든 훈련 유형의 수준을 한 번에 조회합니다."
+    )
+    @GetMapping("/api/trainings/progress/summary")
+    public ApiResponse<TrainingProgressSummaryResponse> getProgressSummary(
+            @AuthenticatedUser CurrentUser currentUser
+    ) {
+        TrainingProgressSummaryResponse response = trainingProgressService.getProgressSummary(currentUser.userId());
         return ApiResponse.success(response);
     }
 

@@ -34,6 +34,7 @@ X-User-Id: 1
 ```text
 - 훈련 세션 생성: 현재 userId로 training_sessions.user_id 저장
 - 훈련 현황 조회: 현재 userId의 progress만 조회
+- 홈 화면 훈련 수준 요약 조회: 현재 userId의 summaries만 조회
 - 훈련 기록 조회: 현재 userId의 summaries만 조회
 - 훈련 상세 조회: sessionId가 현재 userId의 세션인지 검증
 - 훈련 완료 처리: sessionId가 현재 userId의 세션인지 검증
