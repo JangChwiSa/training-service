@@ -1,4 +1,4 @@
-````md
+﻿````md
 # Overall Architecture
 
 ```text
@@ -16,7 +16,6 @@ API Gateway
 |              |                 |          |
 User Service   Training Service  Voice      Report
 |              |                 Service    Service
-user_db        training_db                 report_db
                |                  |
                OpenAI API         OpenAI API
 
@@ -56,7 +55,6 @@ training_db
 - Training scores
 - Completion status
 
-report_db
 - Area-based competency scores
 - Overall progress summary
 - Job readiness score
@@ -136,7 +134,6 @@ Voice Service uses OpenAI API for:
 - Training Service owns training records, scores, feedback, progress, and completion state.
 - Voice Service owns voice and AI interaction processing.
 - Report Service interprets training results and manages report summaries.
-- Training Service must not directly access user_db or report_db.
 - Training Service owns training_db.
 - Training Service may publish TrainingCompleted events.
 - Report Service may consume TrainingCompleted events to update reports.
@@ -197,4 +194,5 @@ Outbox Pattern
 ```
 
 ```
+
 
