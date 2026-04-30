@@ -141,6 +141,37 @@ class TrainingSessionListControllerTest {
     }
 
     @Test
+    void returnsDocumentSessionListWithPlayedLevel() throws Exception {
+        repository.totalElements = 1L;
+        repository.sessions = List.of(new TrainingSessionListItemResponse(
+                30L,
+                null,
+                null,
+                null,
+                80,
+                null,
+                4,
+                5,
+                3,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 4, 27, 10, 40)
+        ));
+
+        mockMvc.perform(get("/api/trainings/sessions")
+                        .param("type", "DOCUMENT")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sessions[0].sessionId").value(30))
+                .andExpect(jsonPath("$.data.sessions[0].score").value(80))
+                .andExpect(jsonPath("$.data.sessions[0].correctCount").value(4))
+                .andExpect(jsonPath("$.data.sessions[0].totalCount").value(5))
+                .andExpect(jsonPath("$.data.sessions[0].playedLevel").value(3))
+                .andExpect(jsonPath("$.data.sessions[0].completedAt").value("2026-04-27T10:40:00"));
+    }
+
+    @Test
     void requiresTrainingType() throws Exception {
         mockMvc.perform(get("/api/trainings/sessions")
                         .header("X-User-Id", "1"))

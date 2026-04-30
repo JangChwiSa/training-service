@@ -168,7 +168,7 @@ class DocumentTrainingServiceTest {
         TrainingSession session = TrainingSession.start(
                 1L,
                 TrainingType.DOCUMENT,
-                "LEVEL_1",
+                "LEVEL_3",
                 null,
                 java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
         ).withSessionId(10L);
@@ -177,6 +177,7 @@ class DocumentTrainingServiceTest {
         documentRepository.assignedQuestionIds = List.of(1L, 2L, 3L, 4L, 5L);
         documentRepository.questionAnswers = questionAnswers(1L, 5);
         CapturingTrainingScoreRepository scoreRepository = new CapturingTrainingScoreRepository();
+        CapturingTrainingSessionSummaryRepository summaryRepository = new CapturingTrainingSessionSummaryRepository();
         CapturingOutboxEventRepository outboxEventRepository = new CapturingOutboxEventRepository();
         DocumentTrainingService completionEnabledService = new DocumentTrainingService(
                 documentRepository,
@@ -187,7 +188,7 @@ class DocumentTrainingServiceTest {
                         scoreRepository,
                         new NoOpTrainingFeedbackRepository(),
                         new NoOpTrainingProgressRepository(),
-                        new NoOpTrainingSessionSummaryRepository(),
+                        summaryRepository,
                         outboxEventRepository,
                         Clock.fixed(Instant.parse("2026-04-28T01:30:00Z"), ZoneId.of("Asia/Seoul"))
                 )
@@ -211,6 +212,7 @@ class DocumentTrainingServiceTest {
         assertThat(response.totalCount()).isEqualTo(5);
         assertThat(documentRepository.savedAnswers).hasSize(5);
         assertThat(scoreRepository.saved.scoreType()).isEqualTo("ACCURACY_RATE");
+        assertThat(summaryRepository.saved.playedLevel()).isEqualTo(3);
         assertThat(sessionRepository.sessions.get(10L).status()).isEqualTo(TrainingSessionStatus.COMPLETED);
         assertThat(outboxEventRepository.saved.eventType()).isEqualTo("TrainingCompleted");
     }
@@ -387,10 +389,13 @@ class DocumentTrainingServiceTest {
         }
     }
 
-    private static class NoOpTrainingSessionSummaryRepository implements TrainingSessionSummaryRepository {
+    private static class CapturingTrainingSessionSummaryRepository implements TrainingSessionSummaryRepository {
+
+        private TrainingSessionSummary saved;
 
         @Override
         public void save(TrainingSessionSummary summary) {
+            this.saved = summary;
         }
 
         @Override

@@ -66,7 +66,7 @@ training_db : 사회성/안전/집중력/문서이해 훈련의 세션, 로그, 
 | correct_count | 정답 수 |
 | total_count | 전체 문항/선택/지시 수 |
 | wrong_count | 오답 수 |
-| played_level | 집중력 훈련 수행 단계 |
+| played_level | 문서 이해 레벨 또는 집중력 훈련 수행 단계 |
 | average_reaction_ms | 평균 반응 시간. 집중력 훈련에서 사용 |
 | completed_at | 훈련 완료 일시 |
 | created_at | 요약 생성 일시 |
@@ -735,7 +735,7 @@ CHECK: feedback_source IN ('AI', 'SYSTEM')
 | total_count | 전체 문항/선택/지시 수 |
 | accuracy_rate | 정확도 |
 | wrong_count | 오답 수 |
-| played_level | 집중력 훈련 수행 단계 |
+| played_level | 문서 이해 레벨 또는 집중력 훈련 수행 단계 |
 | average_reaction_ms | 평균 반응 시간(ms) |
 | completed_at | 훈련 완료일시 |
 | created_at | 생성일시 |

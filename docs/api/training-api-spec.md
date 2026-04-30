@@ -398,6 +398,7 @@ SAFETY
 문서 이해:
 - 문제별 답변 전체는 목록에서 조회하지 않는다.
 - correctCount, totalCount는 training_session_summaries.correct_count, total_count를 사용한다.
+- playedLevel은 training_session_summaries.played_level에 저장된 문서 이해 레벨을 사용한다.
 
 집중력:
 - 반응 로그 전체는 목록에서 조회하지 않는다.
@@ -466,8 +467,9 @@ training_session_summaries.completed_at DESC
     {
       "sessionId": 30,
       "score": 80,
-      "correctCount": 8,
-      "totalCount": 10,
+      "correctCount": 4,
+      "totalCount": 5,
+      "playedLevel": 3,
       "completedAt": "2026-04-27T10:40:00"
     }
   ]

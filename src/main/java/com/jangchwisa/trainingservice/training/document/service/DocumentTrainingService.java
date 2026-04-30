@@ -125,6 +125,8 @@ public class DocumentTrainingService {
     ) {
         ensureCompletionDependency();
         validateAnswerSubmission(currentUser, sessionId, request);
+        TrainingSession session = trainingSessionService.getSession(sessionId);
+        int playedLevel = toLevel(session.subType());
         Map<Long, DocumentQuestionAnswerRow> questionById = documentTrainingRepository.findAssignedQuestionAnswers(sessionId)
                 .stream()
                 .collect(Collectors.toMap(DocumentQuestionAnswerRow::questionId, Function.identity()));
@@ -169,7 +171,7 @@ public class DocumentTrainingService {
                         totalCount,
                         accuracyRate,
                         totalCount - correctCount,
-                        null,
+                        playedLevel,
                         null
                 ),
                 TrainingCompletionProgress.none(),
@@ -212,6 +214,22 @@ public class DocumentTrainingService {
 
     private String toDifficulty(int level) {
         return "LEVEL_" + level;
+    }
+
+    private int toLevel(String difficulty) {
+        if (difficulty == null || !difficulty.startsWith("LEVEL_")) {
+            throw new TrainingServiceException(ErrorCode.CONFLICT, "Document session level is invalid.");
+        }
+
+        try {
+            int level = Integer.parseInt(difficulty.substring("LEVEL_".length()));
+            if (level < 1 || level > 5) {
+                throw new TrainingServiceException(ErrorCode.CONFLICT, "Document session level is invalid.");
+            }
+            return level;
+        } catch (NumberFormatException exception) {
+            throw new TrainingServiceException(ErrorCode.CONFLICT, "Document session level is invalid.");
+        }
     }
 
     private void ensureCompletionDependency() {
