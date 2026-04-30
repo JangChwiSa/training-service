@@ -66,7 +66,7 @@ training_db : 사회성/안전/집중력/문서이해 훈련의 세션, 로그, 
 | correct_count | 정답 수 |
 | total_count | 전체 문항/선택/지시 수 |
 | wrong_count | 오답 수 |
-| played_level | 집중력 훈련 수행 단계 |
+| played_level | 문서 이해 레벨 또는 집중력 훈련 수행 단계 |
 | average_reaction_ms | 평균 반응 시간. 집중력 훈련에서 사용 |
 | completed_at | 훈련 완료 일시 |
 | created_at | 요약 생성 일시 |
@@ -120,6 +120,8 @@ erDiagram
     FOCUS_LEVEL_RULES ||--o{ TRAINING_SESSIONS : defines
     TRAINING_SESSIONS ||--o{ FOCUS_COMMANDS : contains
     FOCUS_COMMANDS ||--o{ FOCUS_REACTION_LOGS : records
+    TRAINING_SESSIONS ||--o{ DOCUMENT_SESSION_QUESTIONS : assigns
+    DOCUMENT_QUESTIONS ||--o{ DOCUMENT_SESSION_QUESTIONS : assigned
     DOCUMENT_QUESTIONS ||--o{ DOCUMENT_ANSWER_LOGS : solved
     TRAINING_SESSIONS ||--o{ DOCUMENT_ANSWER_LOGS : contains
     TRAINING_SESSIONS ||--o| TRAINING_SCORES : has
@@ -172,12 +174,17 @@ CHECK: training_type != 'FOCUS' OR sub_type IS NOT NULL
 | 속성명 | 설명 |
 | --- | --- |
 | scenario_id | 시나리오 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | job_type | 직무 유형 |
+| category_code | 사회성 상황 분류 코드 |
+| situation_order | 카테고리 내 표시 순서 |
 | title | 시나리오 제목 |
 | background_text | 배경 설명 |
 | situation_text | 상황 설명 |
 | character_info | 등장 인물 정보 |
 | difficulty | 난이도 |
+| evaluation_point | 평가 기준 |
+| example_answer | 예시 답변 |
 | is_active | 사용 여부 |
 
 ### 제약 조건
@@ -187,6 +194,7 @@ PK: scenario_id
 NOT NULL: job_type, title, situation_text
 CHECK: job_type IN ('OFFICE','LABOR')
 DEFAULT: is_active = true
+UNIQUE: seed_code
 ```
 
 ## 3.3 social_dialog_logs
@@ -252,6 +260,7 @@ CHECK: completed_count >= 0
 | 속성명 | 설명 |
 | --- | --- |
 | scenario_id | 시나리오 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | title | 시나리오 제목 |
 | category | 안전 훈련 상황 분류 |
 | description | 시나리오 설명 |
@@ -265,6 +274,7 @@ PK: scenario_id
 NOT NULL: title, category, is_active, created_at
 CHECK: category IN ('SEXUAL_EDUCATION', 'INFECTIOUS_DISEASE', 'COMMUTE_SAFETY')
 DEFAULT: is_active = true
+UNIQUE: seed_code
 ```
 
 ## 3.5 safety_scenes
@@ -276,6 +286,7 @@ DEFAULT: is_active = true
 | 속성명 | 설명 |
 | --- | --- |
 | scene_id | 장면 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | scenario_id | 시나리오 ID |
 | scene_order | 장면 순서 |
 | screen_info | 화면 정보 |
@@ -290,6 +301,7 @@ PK: scene_id
 FK: scenario_id → safety_scenarios.scenario_id
 NOT NULL: scenario_id, scene_order, situation_text, question_text, is_end_scene
 UNIQUE: scenario_id + scene_order
+UNIQUE: seed_code
 DEFAULT: is_end_scene = false
 ```
 
@@ -302,10 +314,14 @@ DEFAULT: is_end_scene = false
 | 속성명 | 설명 |
 | --- | --- |
 | choice_id | 선택지 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | scene_id | 장면 ID |
+| choice_order | 선택지 표시 순서 |
 | choice_text | 선택지 내용 |
 | next_scene_id | 다음 장면 ID |
 | is_correct | 올바른 선택 여부 |
+| result_text | 선택 결과 문구 |
+| effect_text | 선택 효과 문구 |
 
 ### 제약 조건
 
@@ -314,6 +330,7 @@ PK: choice_id
 FK: scene_id → safety_scenes.scene_id
 FK: next_scene_id → safety_scenes.scene_id
 NOT NULL: scene_id, choice_text, is_correct
+UNIQUE: seed_code
 ```
 
 ## 3.7 safety_action_logs
@@ -493,6 +510,7 @@ CHECK: last_average_reaction_ms >= 0
 | 속성명 | 설명 |
 | --- | --- |
 | question_id | 문제 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | title | 문제 제목 |
 | document_text | 문서 본문 |
 | question_text | 질문 내용 |
@@ -500,17 +518,78 @@ CHECK: last_average_reaction_ms >= 0
 | correct_answer | 정답 |
 | explanation | 해설 |
 | difficulty | 난이도 |
+| correct_feedback | 정답 피드백 |
+| wrong_feedback | 오답 피드백 |
 | is_active | 사용 여부 |
 
 ### 제약 조건
 
 ```text
 PK: question_id
-NOT NULL: title, question_text, correct_answer
+NOT NULL: title, question_text, correct_answer, difficulty
+CHECK: difficulty IN ('LEVEL_1', 'LEVEL_2', 'LEVEL_3', 'LEVEL_4', 'LEVEL_5')
 DEFAULT: is_active = true
+UNIQUE: seed_code
 ```
 
-## 3.12 document_answer_logs
+### Index
+
+```text
+document_questions(difficulty, is_active)
+```
+
+## 3.11.1 document_question_choices
+
+문서 이해 객관식 문제의 선택지를 저장하기 위한 테이블.
+
+### 속성
+
+| 속성명 | 설명 |
+| --- | --- |
+| choice_id | 선택지 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
+| question_id | 문서 이해 문제 ID |
+| choice_order | 선택지 표시 순서 |
+| choice_text | 선택지 내용 |
+| is_correct | 정답 선택지 여부 |
+
+### 제약 조건
+
+```text
+PK: choice_id
+FK: question_id → document_questions.question_id
+UNIQUE: seed_code
+UNIQUE: question_id + choice_order
+NOT NULL: question_id, choice_order, choice_text, is_correct
+CHECK: choice_order >= 1
+```
+
+## 3.12 document_session_questions
+
+문서 이해 훈련 세션 시작 시 사용자에게 배정된 문제 목록을 저장하기 위한 테이블.
+`document_answer_logs`는 답변 제출 후 사용자 답변과 채점 결과를 저장한다.
+
+### 속성
+
+| 속성명 | 설명 |
+| --- | --- |
+| session_id | 훈련 세션 ID |
+| question_id | 배정된 문서 이해 문제 ID |
+| display_order | 세션 내 문제 표시 순서 |
+| created_at | 생성 일시 |
+
+### 제약 조건
+
+```text
+PK: session_id + question_id
+FK: session_id → training_sessions.session_id
+FK: question_id → document_questions.question_id
+UNIQUE: session_id + display_order
+NOT NULL: session_id, question_id, display_order, created_at
+CHECK: display_order >= 1
+```
+
+## 3.13 document_answer_logs
 
 문서 이해 훈련의 문제별 답변 결과를 저장하기 위한 테이블.
 
@@ -537,7 +616,7 @@ NOT NULL: session_id, question_id, user_answer, correct_answer, is_correct, crea
 UNIQUE: session_id + question_id
 ```
 
-## 3.12.1 user_document_progress
+## 3.13.1 user_document_progress
 
 사용자별 문서 이해 훈련 최신 진행 요약을 관리하기 위한 테이블.
 
@@ -551,6 +630,10 @@ UNIQUE: session_id + question_id
 | correct_count | 최근 문서 이해 훈련 정답 수 |
 | total_count | 최근 문서 이해 훈련 전체 문제 수 |
 | recent_score | 최근 문서 이해 훈련 대표 점수 |
+| current_level | 현재 사용자가 도달한 문서 이해 훈련 레벨 |
+| highest_unlocked_level | 사용자가 선택 가능한 최고 문서 이해 훈련 레벨 |
+| last_played_level | 마지막으로 수행한 문서 이해 훈련 레벨 |
+| last_accuracy_rate | 마지막 문서 이해 훈련 정확도 |
 | completed_count | 완료한 문서 이해 훈련 횟수 |
 | last_completed_at | 마지막 완료일시 |
 | updated_at | 수정일시 |
@@ -562,11 +645,15 @@ PK: progress_id
 FK: recent_session_id → training_sessions.session_id
 REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
-NOT NULL: user_id, correct_count, total_count, completed_count, updated_at
+NOT NULL: user_id, correct_count, total_count, current_level, highest_unlocked_level, completed_count, updated_at
 CHECK: correct_count >= 0
 CHECK: total_count >= 0
 CHECK: correct_count <= total_count
 CHECK: recent_score BETWEEN 0 AND 100
+CHECK: current_level >= 1
+CHECK: highest_unlocked_level >= 1
+CHECK: last_played_level >= 1 또는 NULL 허용
+CHECK: last_accuracy_rate BETWEEN 0 AND 100 또는 NULL 허용
 CHECK: completed_count >= 0
 ```
 
@@ -656,7 +743,7 @@ CHECK: feedback_source IN ('AI', 'SYSTEM')
 | total_count | 전체 문항/선택/지시 수 |
 | accuracy_rate | 정확도 |
 | wrong_count | 오답 수 |
-| played_level | 집중력 훈련 수행 단계 |
+| played_level | 문서 이해 레벨 또는 집중력 훈련 수행 단계 |
 | average_reaction_ms | 평균 반응 시간(ms) |
 | completed_at | 훈련 완료일시 |
 | created_at | 생성일시 |
@@ -671,14 +758,14 @@ UNIQUE: session_id
 NOT NULL: session_id, user_id, training_type, title, completed_at, created_at
 CHECK: training_type IN ('SOCIAL', 'SAFETY', 'FOCUS', 'DOCUMENT')
 CHECK: category IN ('SEXUAL_EDUCATION', 'INFECTIOUS_DISEASE', 'COMMUTE_SAFETY') 또는 NULL 허용
-CHECK: score BETWEEN 0 AND 100
-CHECK: correct_count >= 0
-CHECK: total_count >= 0
-CHECK: correct_count <= total_count
-CHECK: accuracy_rate BETWEEN 0 AND 100
-CHECK: wrong_count >= 0
-CHECK: played_level >= 1
-CHECK: average_reaction_ms >= 0
+CHECK: score BETWEEN 0 AND 100 또는 NULL 허용
+CHECK: correct_count >= 0 또는 NULL 허용
+CHECK: total_count >= 0 또는 NULL 허용
+CHECK: correct_count <= total_count 또는 NULL 허용
+CHECK: accuracy_rate BETWEEN 0 AND 100 또는 NULL 허용
+CHECK: wrong_count >= 0 또는 NULL 허용
+CHECK: played_level >= 1 또는 NULL 허용
+CHECK: average_reaction_ms >= 0 또는 NULL 허용
 ```
 
 ### 저장 기준
@@ -760,6 +847,8 @@ user_social_progress(user_id)
 user_safety_progress(user_id)
 user_focus_progress(user_id)
 user_document_progress(user_id)
+document_questions(difficulty, is_active)
+document_session_questions(session_id, display_order)
 document_answer_logs(session_id)
 training_scores(session_id)
 safety_scenarios(category, is_active)

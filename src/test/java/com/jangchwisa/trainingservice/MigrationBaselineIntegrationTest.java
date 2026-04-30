@@ -12,32 +12,8 @@ import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.MigrationState;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Testcontainers
-class MigrationBaselineIntegrationTest {
-
-    @Container
-    static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4")
-            .withDatabaseName("training_db")
-            .withUsername("training_user")
-            .withPassword("training_password");
-
-    @DynamicPropertySource
-    static void mysqlProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     Flyway flyway;
@@ -70,8 +46,14 @@ class MigrationBaselineIntegrationTest {
             assertThat(tableExists(connection, "focus_reaction_logs")).isTrue();
             assertThat(tableExists(connection, "user_focus_progress")).isTrue();
             assertThat(tableExists(connection, "document_questions")).isTrue();
+            assertThat(tableExists(connection, "document_question_choices")).isTrue();
+            assertThat(tableExists(connection, "document_session_questions")).isTrue();
             assertThat(tableExists(connection, "document_answer_logs")).isTrue();
             assertThat(tableExists(connection, "user_document_progress")).isTrue();
+            assertThat(columnExists(connection, "social_scenarios", "seed_code")).isTrue();
+            assertThat(columnExists(connection, "social_scenarios", "evaluation_point")).isTrue();
+            assertThat(columnExists(connection, "safety_choices", "result_text")).isTrue();
+            assertThat(columnExists(connection, "document_questions", "correct_feedback")).isTrue();
             assertThat(contentTableUserIdColumnCount(connection)).isZero();
             assertThat(userIdForeignKeyCount(connection)).isZero();
         }
@@ -116,6 +98,26 @@ class MigrationBaselineIntegrationTest {
         }
     }
 
+    private boolean columnExists(Connection connection, String tableName, String columnName) throws Exception {
+        String sql = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND column_name = ?
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, tableName);
+            statement.setString(2, columnName);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1) == 1;
+            }
+        }
+    }
+
     private int userIdForeignKeyCount(Connection connection) throws Exception {
         String sql = """
                 SELECT COUNT(*)
@@ -144,7 +146,8 @@ class MigrationBaselineIntegrationTest {
                       'safety_scenes',
                       'safety_choices',
                       'focus_level_rules',
-                      'document_questions'
+                      'document_questions',
+                      'document_question_choices'
                   )
                 """;
 
