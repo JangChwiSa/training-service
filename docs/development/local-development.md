@@ -1,10 +1,10 @@
-# Local Development
+﻿# Local Development
 
 ## 1. Purpose
 
-이 문서는 Training Service를 로컬에서 개발하고 실행하기 위한 환경 기준을 정의한다.
+??臾몄꽌??Training Service瑜?濡쒖뺄?먯꽌 媛쒕컻?섍퀬 ?ㅽ뻾?섍린 ?꾪븳 ?섍꼍 湲곗????뺤쓽?쒕떎.
 
-실제 `Dockerfile`, `docker-compose.yml`, `.env.example` 파일은 별도 작업에서 생성한다. 이 문서는 해당 파일을 만들 때 따라야 할 기준을 설명한다.
+?ㅼ젣 `Dockerfile`, `docker-compose.yml`, `.env.example` ?뚯씪? 蹂꾨룄 ?묒뾽?먯꽌 ?앹꽦?쒕떎. ??臾몄꽌???대떦 ?뚯씪??留뚮뱾 ???곕씪????湲곗????ㅻ챸?쒕떎.
 
 ## 2. Technology Baseline
 
@@ -16,32 +16,31 @@ Database name: training_db
 Container runtime: Docker
 ```
 
-Training Service는 로컬 개발 환경에서도 `training_db`만 직접 사용한다.
+Training Service??濡쒖뺄 媛쒕컻 ?섍꼍?먯꽌??`training_db`留?吏곸젒 ?ъ슜?쒕떎.
 
-`user_db`와 `report_db`는 로컬 개발 환경에 포함하지 않는다.
 
 ## 3. Docker Scope
 
-로컬 Docker 구성은 다음 컨테이너를 기본 대상으로 한다.
+濡쒖뺄 Docker 援ъ꽦? ?ㅼ쓬 而⑦뀒?대꼫瑜?湲곕낯 ??곸쑝濡??쒕떎.
 
 ```text
 training-service
-- Spring Boot 애플리케이션
-- /api/trainings/** API 제공
-- /internal/trainings/** API 제공
+- Spring Boot ?좏뵆由ъ??댁뀡
+- /api/trainings/** API ?쒓났
+- /internal/trainings/** API ?쒓났
 
 mysql
-- Training Service 전용 MySQL
+- Training Service ?꾩슜 MySQL
 - database = training_db
 ```
 
-OpenAI API, Report Service, Event Broker는 로컬 Docker 구성의 필수 컨테이너가 아니다.
+OpenAI API, Report Service, Event Broker??濡쒖뺄 Docker 援ъ꽦???꾩닔 而⑦뀒?대꼫媛 ?꾨땲??
 
-필요한 경우 외부 서비스 endpoint 또는 mock adapter를 사용한다.
+?꾩슂??寃쎌슦 ?몃? ?쒕퉬??endpoint ?먮뒗 mock adapter瑜??ъ슜?쒕떎.
 
 ## 4. Environment Variables
 
-`.env.example`에는 다음 값을 문서화한다.
+`.env.example`?먮뒗 ?ㅼ쓬 媛믪쓣 臾몄꽌?뷀븳??
 
 ```text
 SPRING_PROFILES_ACTIVE=local
@@ -70,37 +69,37 @@ EVENT_BROKER_URL=
 EVENT_BROKER_TIMEOUT_MS=5000
 ```
 
-민감한 값은 저장소에 커밋하지 않는다.
+誘쇨컧??媛믪? ??μ냼??而ㅻ컠?섏? ?딅뒗??
 
-실제 OpenAI API 키, 운영 DB 비밀번호, 운영 이벤트 브로커 접속 정보는 로컬 예시 파일에 포함하지 않는다.
+?ㅼ젣 OpenAI API ?? ?댁쁺 DB 鍮꾨?踰덊샇, ?댁쁺 ?대깽??釉뚮줈而??묒냽 ?뺣낫??濡쒖뺄 ?덉떆 ?뚯씪???ы븿?섏? ?딅뒗??
 
 ## 5. Local Run Flow
 
-로컬 실행 흐름은 다음 기준을 따른다.
+濡쒖뺄 ?ㅽ뻾 ?먮쫫? ?ㅼ쓬 湲곗????곕Ⅸ??
 
 ```text
-1. MySQL 컨테이너를 먼저 실행한다.
-2. training_db 데이터베이스를 준비한다.
-3. Training Service 애플리케이션을 local profile로 실행한다.
-4. API 요청에는 trusted user header를 포함한다.
-5. health check와 기본 API 응답을 확인한다.
+1. MySQL 而⑦뀒?대꼫瑜?癒쇱? ?ㅽ뻾?쒕떎.
+2. training_db ?곗씠?곕쿋?댁뒪瑜?以鍮꾪븳??
+3. Training Service ?좏뵆由ъ??댁뀡??local profile濡??ㅽ뻾?쒕떎.
+4. API ?붿껌?먮뒗 trusted user header瑜??ы븿?쒕떎.
+5. health check? 湲곕낯 API ?묐떟???뺤씤?쒕떎.
 ```
 
-로컬 요청 예시는 다음과 같은 사용자 식별 header를 사용한다.
+濡쒖뺄 ?붿껌 ?덉떆???ㅼ쓬怨?媛숈? ?ъ슜???앸퀎 header瑜??ъ슜?쒕떎.
 
 ```http
 X-User-Id: 1
 ```
 
-외부 API 요청 body 또는 query parameter에 `userId`를 넣지 않는다.
+?몃? API ?붿껌 body ?먮뒗 query parameter??`userId`瑜??ｌ? ?딅뒗??
 
 ## 6. Development Boundaries
 
-로컬 개발 환경에서도 다음 경계를 유지한다.
+濡쒖뺄 媛쒕컻 ?섍꼍?먯꽌???ㅼ쓬 寃쎄퀎瑜??좎??쒕떎.
 
 ```text
-- Training Service는 로그인, 회원가입, 사용자 프로필 관리를 구현하지 않는다.
-- Training Service는 user_db 또는 report_db에 직접 접근하지 않는다.
-- Training Service는 STT, TTS, 실시간 음성 대화를 구현하지 않는다.
-- Training Service는 훈련 평가, 점수 생성, 피드백 생성을 위해서만 OpenAI API를 사용한다.
+- Training Service??濡쒓렇?? ?뚯썝媛?? ?ъ슜???꾨줈??愿由щ? 援ы쁽?섏? ?딅뒗??
+- Training Service??STT, TTS, ?ㅼ떆媛??뚯꽦 ??붾? 援ы쁽?섏? ?딅뒗??
+- Training Service???덈젴 ?됯?, ?먯닔 ?앹꽦, ?쇰뱶諛??앹꽦???꾪빐?쒕쭔 OpenAI API瑜??ъ슜?쒕떎.
 ```
+

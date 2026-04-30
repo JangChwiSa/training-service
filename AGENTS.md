@@ -1,4 +1,4 @@
-# Repository Guidelines
+﻿# Repository Guidelines
 
 ## Role Scope
 
@@ -54,7 +54,6 @@ API Gateway
 |              |                 |          |
 User Service   Training Service  Voice      Report
 |              |                 Service    Service
-user_db        training_db                 report_db
                |                  |
                OpenAI API         OpenAI API
 
@@ -83,7 +82,6 @@ Service data ownership:
 ```text
 User Service owns user_db.
 Training Service owns training_db.
-Report Service owns report_db.
 Voice Service owns voice and AI interaction responsibilities.
 ```
 
@@ -97,7 +95,6 @@ Training Service must not directly access:
 
 ```text
 - user_db
-- report_db
 - Frontend state
 - Authentication credentials
 ```
@@ -476,3 +473,4 @@ Voice Service = voice and AI interaction engine
 Training Service = owner of training records, scores, feedback, and progress
 Report Service = analysis service that interprets training results
 ```
+
