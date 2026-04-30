@@ -630,6 +630,10 @@ UNIQUE: session_id + question_id
 | correct_count | 최근 문서 이해 훈련 정답 수 |
 | total_count | 최근 문서 이해 훈련 전체 문제 수 |
 | recent_score | 최근 문서 이해 훈련 대표 점수 |
+| current_level | 현재 사용자가 도달한 문서 이해 훈련 레벨 |
+| highest_unlocked_level | 사용자가 선택 가능한 최고 문서 이해 훈련 레벨 |
+| last_played_level | 마지막으로 수행한 문서 이해 훈련 레벨 |
+| last_accuracy_rate | 마지막 문서 이해 훈련 정확도 |
 | completed_count | 완료한 문서 이해 훈련 횟수 |
 | last_completed_at | 마지막 완료일시 |
 | updated_at | 수정일시 |
@@ -641,11 +645,15 @@ PK: progress_id
 FK: recent_session_id → training_sessions.session_id
 REF: user_id는 User Service의 사용자 ID를 참조하는 외부 식별자이며 training_db에서 users 물리 FK를 생성하지 않는다.
 UNIQUE: user_id
-NOT NULL: user_id, correct_count, total_count, completed_count, updated_at
+NOT NULL: user_id, correct_count, total_count, current_level, highest_unlocked_level, completed_count, updated_at
 CHECK: correct_count >= 0
 CHECK: total_count >= 0
 CHECK: correct_count <= total_count
 CHECK: recent_score BETWEEN 0 AND 100
+CHECK: current_level >= 1
+CHECK: highest_unlocked_level >= 1
+CHECK: last_played_level >= 1 또는 NULL 허용
+CHECK: last_accuracy_rate BETWEEN 0 AND 100 또는 NULL 허용
 CHECK: completed_count >= 0
 ```
 

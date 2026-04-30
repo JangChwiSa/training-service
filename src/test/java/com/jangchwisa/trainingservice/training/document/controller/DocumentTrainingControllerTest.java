@@ -15,7 +15,10 @@ import com.jangchwisa.trainingservice.training.document.repository.DocumentTrain
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
 import com.jangchwisa.trainingservice.training.document.service.DocumentTrainingService;
+import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
+import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionOwnershipRepository;
 import com.jangchwisa.trainingservice.training.session.repository.TrainingSessionRepository;
 import com.jangchwisa.trainingservice.training.session.service.SessionOwnershipValidator;
@@ -23,6 +26,7 @@ import com.jangchwisa.trainingservice.training.session.service.TrainingSessionSe
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +43,7 @@ class DocumentTrainingControllerTest {
 
     FakeOwnershipRepository ownershipRepository = new FakeOwnershipRepository();
     FakeDocumentTrainingRepository documentRepository = new FakeDocumentTrainingRepository();
+    FakeTrainingProgressRepository progressRepository = new FakeTrainingProgressRepository();
     FakeTrainingSessionRepository sessionRepository = new FakeTrainingSessionRepository(ownershipRepository);
     MockMvc mockMvc;
 
@@ -52,7 +57,9 @@ class DocumentTrainingControllerTest {
         DocumentTrainingService documentTrainingService = new DocumentTrainingService(
                 documentRepository,
                 trainingSessionService,
-                new SessionOwnershipValidator(ownershipRepository)
+                new SessionOwnershipValidator(ownershipRepository),
+                progressRepository,
+                null
         );
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new DocumentTrainingController(documentTrainingService))
@@ -64,6 +71,7 @@ class DocumentTrainingControllerTest {
     @Test
     void startsDocumentSession() throws Exception {
         documentRepository.questions = questions(1L, 5);
+        progressRepository.documentProgress = Optional.of(documentProgress(1, 1));
 
         mockMvc.perform(post("/api/trainings/document/sessions")
                         .header("X-User-Id", "7")
@@ -76,6 +84,21 @@ class DocumentTrainingControllerTest {
                 .andExpect(jsonPath("$.data.questions[0].title").value("Document question 1"))
                 .andExpect(jsonPath("$.data.questions[0].questionType").value("SHORT_ANSWER"))
                 .andExpect(jsonPath("$.data.questions[0].choices.length()").value(0));
+    }
+
+    @Test
+    void returnsDocumentProgress() throws Exception {
+        progressRepository.documentProgress = Optional.of(documentProgress(2, 3));
+
+        mockMvc.perform(get("/api/trainings/document/progress")
+                        .header("X-User-Id", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.trainingType").value("DOCUMENT"))
+                .andExpect(jsonPath("$.data.currentLevel").value(2))
+                .andExpect(jsonPath("$.data.highestUnlockedLevel").value(3))
+                .andExpect(jsonPath("$.data.lastPlayedLevel").value(2))
+                .andExpect(jsonPath("$.data.lastAccuracyRate").value(80.0));
     }
 
     @Test
@@ -147,6 +170,32 @@ class DocumentTrainingControllerTest {
         return LongStream.range(startQuestionId, startQuestionId + count)
                 .mapToObj(DocumentTrainingControllerTest::question)
                 .toList();
+    }
+
+    private static DocumentProgressResponse documentProgress(int currentLevel, int highestUnlockedLevel) {
+        return new DocumentProgressResponse(
+                TrainingType.DOCUMENT,
+                10L,
+                4,
+                5,
+                80,
+                currentLevel,
+                highestUnlockedLevel,
+                2,
+                BigDecimal.valueOf(80),
+                1,
+                java.time.LocalDateTime.of(2026, 4, 27, 10, 40)
+        );
+    }
+
+    static class FakeTrainingProgressRepository implements TrainingProgressRepository {
+
+        Optional<DocumentProgressResponse> documentProgress = Optional.empty();
+
+        @Override
+        public Optional<DocumentProgressResponse> findDocumentProgress(long userId) {
+            return documentProgress;
+        }
     }
 
     static class FakeDocumentTrainingRepository implements DocumentTrainingRepository {

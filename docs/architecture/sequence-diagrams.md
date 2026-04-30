@@ -622,6 +622,8 @@ sequenceDiagram
     Browser->>Nginx: Start session request(level)
     Nginx->>GW: Forward request
     GW->>TS: Create document session request(level)
+    TS->>TDB: Load user_document_progress.highest_unlocked_level
+    TS->>TS: Reject locked level when requested level is greater than highest_unlocked_level
     TS->>TS: Convert level to LEVEL_1~LEVEL_5 difficulty
     TS->>TDB: Query random 5 active document_questions by difficulty
     TDB-->>TS: Return assigned 5 questions
@@ -639,5 +641,6 @@ sequenceDiagram
     TDB-->>TS: Return session question IDs
     TS->>TS: Verify submitted questionIds exactly match assigned 5 questions
     TS->>TDB: Load answers and explanations for assigned questions
-    TS->>TDB: Save answer logs, score, feedback, progress, summary
+    TS->>TS: Calculate accuracy and unlock next level when accuracy is at least 80%
+    TS->>TDB: Save answer logs, score, feedback, document progress unlock state, summary
 ```

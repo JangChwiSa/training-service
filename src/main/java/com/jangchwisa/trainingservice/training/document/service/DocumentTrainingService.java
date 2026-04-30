@@ -23,6 +23,8 @@ import com.jangchwisa.trainingservice.training.document.repository.DocumentTrain
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentScoreRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
+import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse;
+import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingSession;
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import com.jangchwisa.trainingservice.training.session.service.CreateTrainingSessionCommand;
@@ -44,22 +46,27 @@ import org.springframework.transaction.annotation.Transactional;
 public class DocumentTrainingService {
 
     private static final int DOCUMENT_SESSION_QUESTION_COUNT = 5;
+    private static final int MAX_DOCUMENT_LEVEL = 5;
+    private static final BigDecimal REQUIRED_UNLOCK_ACCURACY_RATE = BigDecimal.valueOf(80);
 
     private final DocumentTrainingRepository documentTrainingRepository;
     private final TrainingSessionService trainingSessionService;
     private final SessionOwnershipValidator sessionOwnershipValidator;
     private final TrainingCompletionService trainingCompletionService;
+    private final TrainingProgressRepository trainingProgressRepository;
 
     @Autowired
     public DocumentTrainingService(
             DocumentTrainingRepository documentTrainingRepository,
             TrainingSessionService trainingSessionService,
             SessionOwnershipValidator sessionOwnershipValidator,
+            TrainingProgressRepository trainingProgressRepository,
             TrainingCompletionService trainingCompletionService
     ) {
         this.documentTrainingRepository = documentTrainingRepository;
         this.trainingSessionService = trainingSessionService;
         this.sessionOwnershipValidator = sessionOwnershipValidator;
+        this.trainingProgressRepository = trainingProgressRepository;
         this.trainingCompletionService = trainingCompletionService;
     }
 
@@ -68,11 +75,35 @@ public class DocumentTrainingService {
             TrainingSessionService trainingSessionService,
             SessionOwnershipValidator sessionOwnershipValidator
     ) {
-        this(documentTrainingRepository, trainingSessionService, sessionOwnershipValidator, null);
+        this(documentTrainingRepository, trainingSessionService, sessionOwnershipValidator, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentProgressResponse getProgress(long userId) {
+        ensureProgressDependency();
+        return trainingProgressRepository.findDocumentProgress(userId)
+                .orElseGet(() -> new DocumentProgressResponse(
+                        TrainingType.DOCUMENT,
+                        null,
+                        0,
+                        0,
+                        null,
+                        1,
+                        1,
+                        null,
+                        null,
+                        0,
+                        null
+                ));
     }
 
     @Transactional
     public StartDocumentSessionResponse startSession(CurrentUser currentUser, StartDocumentSessionRequest request) {
+        ensureProgressDependency();
+        DocumentProgressResponse progress = getProgress(currentUser.userId());
+        if (request.level() > progress.highestUnlockedLevel()) {
+            throw new TrainingServiceException(ErrorCode.FORBIDDEN, "Document level is locked.");
+        }
         String difficulty = toDifficulty(request.level());
         List<DocumentQuestionResponse> questions = documentTrainingRepository.findRandomActiveQuestionsByDifficulty(
                 difficulty,
@@ -140,6 +171,12 @@ public class DocumentTrainingService {
                 .multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP);
         int score = accuracyRate.setScale(0, RoundingMode.HALF_UP).intValue();
+        DocumentProgressResponse previousProgress = getProgress(currentUser.userId());
+        boolean unlockedNextLevel = accuracyRate.compareTo(REQUIRED_UNLOCK_ACCURACY_RATE) >= 0;
+        int highestUnlockedLevel = unlockedNextLevel
+                ? Math.max(previousProgress.highestUnlockedLevel(), Math.min(MAX_DOCUMENT_LEVEL, playedLevel + 1))
+                : Math.max(previousProgress.highestUnlockedLevel(), playedLevel);
+        int currentLevel = Math.max(previousProgress.currentLevel(), highestUnlockedLevel);
 
         TrainingCompletionResult completionResult = trainingCompletionService.complete(new TrainingCompletionCommand(
                 currentUser.userId(),
@@ -174,7 +211,7 @@ public class DocumentTrainingService {
                         playedLevel,
                         null
                 ),
-                TrainingCompletionProgress.none(),
+                new TrainingCompletionProgress(currentLevel, highestUnlockedLevel, playedLevel, accuracyRate, null),
                 () -> documentTrainingRepository.saveAnswerLogs(sessionId, scoredAnswers)
         ));
 
@@ -235,6 +272,12 @@ public class DocumentTrainingService {
     private void ensureCompletionDependency() {
         if (trainingCompletionService == null) {
             throw new TrainingServiceException(ErrorCode.INTERNAL_SERVER_ERROR, "Document completion is not configured.");
+        }
+    }
+
+    private void ensureProgressDependency() {
+        if (trainingProgressRepository == null) {
+            throw new TrainingServiceException(ErrorCode.INTERNAL_SERVER_ERROR, "Document progress is not configured.");
         }
     }
 }

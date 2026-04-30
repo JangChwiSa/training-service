@@ -1163,11 +1163,44 @@ TrainingCompleted 이벤트 발행
 
 # 8. 문서 이해 훈련 API
 
-## 8.1 문서 이해 훈련 시작
+## 8.1 문서 이해 진행 상태 조회
+
+### GET /api/trainings/document/progress
+
+문서 이해 훈련 화면에서 사용자가 현재 플레이할 수 있는 레벨과 최근 수행 결과를 조회한다.
+기록이 없으면 `currentLevel = 1`, `highestUnlockedLevel = 1`을 반환한다.
+
+### DB 조회 기준
+
+```text
+user_document_progress
+WHERE user_id = 현재 사용자 ID
+```
+
+### Response
+
+```json
+{
+  "trainingType": "DOCUMENT",
+  "recentSessionId": 50,
+  "correctCount": 4,
+  "totalCount": 5,
+  "recentScore": 80,
+  "currentLevel": 2,
+  "highestUnlockedLevel": 3,
+  "lastPlayedLevel": 2,
+  "lastAccuracyRate": 80.0,
+  "completedCount": 4,
+  "lastCompletedAt": "2026-04-27T10:40:00"
+}
+```
+
+## 8.2 문서 이해 훈련 시작
 
 ### POST /api/trainings/document/sessions
 
 문서 이해 훈련 세션을 생성하고 요청한 레벨의 활성 문서 이해 문제 중 랜덤 배정된 5문제를 반환한다.
+요청 레벨은 `user_document_progress.highest_unlocked_level` 이하만 허용한다.
 
 ### Request
 
@@ -1187,6 +1220,7 @@ TrainingCompleted 이벤트 발행
 
 ```text
 Gateway가 전달한 X-User-Id를 현재 user_id로 사용
+user_document_progress.highest_unlocked_level로 선택 가능 여부 검증
 level을 LEVEL_1~LEVEL_5 difficulty 값으로 변환
 document_questions에서 difficulty와 is_active 기준으로 랜덤 5문제 조회
 5문제 미만이면 CONFLICT 반환
@@ -1228,7 +1262,7 @@ document_session_questions에 배정 문제 5개와 display_order 저장
 }
 ```
 
-## 8.2 문서 이해 답변 제출 및 완료
+## 8.3 문서 이해 답변 제출 및 완료
 
 ### POST /api/trainings/document/sessions/{sessionId}/answers
 
@@ -1264,6 +1298,8 @@ training_scores 저장
   score_type = ACCURACY_RATE
 training_feedbacks 저장
 user_document_progress 갱신
+  current_level, highest_unlocked_level, last_played_level, last_accuracy_rate 갱신
+  정확도 80% 이상이면 다음 레벨 해금. 최고 레벨은 5를 넘지 않음
 training_session_summaries 생성
 training_sessions.status = COMPLETED
 TrainingCompleted 이벤트 발행
@@ -1274,6 +1310,7 @@ TrainingCompleted 이벤트 발행
 | 조건 | 코드 |
 | --- | --- |
 | level이 1~5 범위를 벗어남 | VALIDATION_ERROR |
+| 요청 level이 highestUnlockedLevel보다 큼 | FORBIDDEN |
 | 요청 레벨의 활성 문제가 5개 미만 | CONFLICT |
 | 제출 questionId가 배정된 5문제와 정확히 일치하지 않음 | VALIDATION_ERROR |
 | SHORT_ANSWER에 userAnswer가 없거나 MULTIPLE_CHOICE에 choiceId가 없음 | VALIDATION_ERROR |

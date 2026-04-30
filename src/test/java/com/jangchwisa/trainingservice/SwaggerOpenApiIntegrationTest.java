@@ -46,6 +46,7 @@ class SwaggerOpenApiIntegrationTest {
                 .allSatisfy(parameter -> assertThat(parameter.path("name").asText()).isNotEqualTo("currentUser"));
         assertThat(body.path("paths").has("/api/trainings/progress")).isTrue();
         assertThat(body.path("paths").has("/api/trainings/progress/summary")).isTrue();
+        assertThat(body.path("paths").has("/api/trainings/document/progress")).isTrue();
         assertThat(body.path("paths").has("/internal/trainings/users/{userId}/summary")).isFalse();
     }
 
@@ -56,6 +57,7 @@ class SwaggerOpenApiIntegrationTest {
         assertThat(body.path("paths").has("/internal/trainings/users/{userId}/summary")).isTrue();
         assertThat(body.path("paths").has("/api/trainings/progress")).isFalse();
         assertThat(body.path("paths").has("/api/trainings/progress/summary")).isFalse();
+        assertThat(body.path("paths").has("/api/trainings/document/progress")).isFalse();
     }
 
     private HttpResponse<String> get(String path) throws Exception {

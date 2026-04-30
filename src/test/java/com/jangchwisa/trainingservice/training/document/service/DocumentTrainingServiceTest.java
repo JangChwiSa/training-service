@@ -23,6 +23,7 @@ import com.jangchwisa.trainingservice.training.document.repository.DocumentTrain
 import com.jangchwisa.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
 import com.jangchwisa.trainingservice.training.feedback.entity.TrainingFeedback;
 import com.jangchwisa.trainingservice.training.feedback.repository.TrainingFeedbackRepository;
+import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse;
 import com.jangchwisa.trainingservice.training.progress.entity.TrainingProgressCompletion;
 import com.jangchwisa.trainingservice.training.progress.repository.TrainingProgressRepository;
 import com.jangchwisa.trainingservice.training.score.entity.TrainingScore;
@@ -39,6 +40,7 @@ import com.jangchwisa.trainingservice.training.summary.repository.TrainingSessio
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,7 @@ class DocumentTrainingServiceTest {
     FakeOwnershipRepository ownershipRepository = new FakeOwnershipRepository();
     FakeTrainingSessionRepository sessionRepository = new FakeTrainingSessionRepository(ownershipRepository);
     FakeDocumentTrainingRepository documentRepository = new FakeDocumentTrainingRepository();
+    FakeTrainingProgressRepository progressRepository = new FakeTrainingProgressRepository();
     TrainingSessionService trainingSessionService = new TrainingSessionService(
             sessionRepository,
             Clock.fixed(Instant.parse("2026-04-28T01:00:00Z"), ZoneId.of("Asia/Seoul"))
@@ -59,12 +62,15 @@ class DocumentTrainingServiceTest {
     DocumentTrainingService service = new DocumentTrainingService(
             documentRepository,
             trainingSessionService,
-            new SessionOwnershipValidator(ownershipRepository)
+            new SessionOwnershipValidator(ownershipRepository),
+            progressRepository,
+            null
     );
 
     @Test
     void startsDocumentSessionAndReturnsFiveLevelQuestions() {
         documentRepository.questions = questions(1L, 5);
+        progressRepository.documentProgress = Optional.of(defaultProgress(3));
 
         StartDocumentSessionResponse response = service.startSession(
                 new CurrentUser(7L),
@@ -84,8 +90,31 @@ class DocumentTrainingServiceTest {
     }
 
     @Test
+    void returnsDefaultDocumentProgressWhenProgressDoesNotExist() {
+        DocumentProgressResponse response = service.getProgress(7L);
+
+        assertThat(response.trainingType()).isEqualTo(TrainingType.DOCUMENT);
+        assertThat(response.currentLevel()).isEqualTo(1);
+        assertThat(response.highestUnlockedLevel()).isEqualTo(1);
+        assertThat(response.completedCount()).isZero();
+        assertThat(response.lastPlayedLevel()).isNull();
+    }
+
+    @Test
+    void rejectsLockedDocumentLevel() {
+        progressRepository.documentProgress = Optional.of(defaultProgress(2));
+
+        assertThatThrownBy(() -> service.startSession(new CurrentUser(7L), new StartDocumentSessionRequest(3)))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+                    assertThat(exception.getMessage()).isEqualTo("Document level is locked.");
+                });
+    }
+
+    @Test
     void rejectsStartWhenLevelHasFewerThanFiveActiveQuestions() {
         documentRepository.questions = questions(1L, 4);
+        progressRepository.documentProgress = Optional.of(defaultProgress(1));
 
         assertThatThrownBy(() -> service.startSession(new CurrentUser(7L), new StartDocumentSessionRequest(1)))
                 .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
@@ -183,11 +212,12 @@ class DocumentTrainingServiceTest {
                 documentRepository,
                 trainingSessionService,
                 new SessionOwnershipValidator(ownershipRepository),
+                progressRepository,
                 new TrainingCompletionService(
                         sessionRepository,
                         scoreRepository,
                         new NoOpTrainingFeedbackRepository(),
-                        new NoOpTrainingProgressRepository(),
+                        progressRepository,
                         summaryRepository,
                         outboxEventRepository,
                         Clock.fixed(Instant.parse("2026-04-28T01:30:00Z"), ZoneId.of("Asia/Seoul"))
@@ -213,6 +243,10 @@ class DocumentTrainingServiceTest {
         assertThat(documentRepository.savedAnswers).hasSize(5);
         assertThat(scoreRepository.saved.scoreType()).isEqualTo("ACCURACY_RATE");
         assertThat(summaryRepository.saved.playedLevel()).isEqualTo(3);
+        assertThat(progressRepository.savedCompletion.currentLevel()).isEqualTo(4);
+        assertThat(progressRepository.savedCompletion.highestUnlockedLevel()).isEqualTo(4);
+        assertThat(progressRepository.savedCompletion.playedLevel()).isEqualTo(3);
+        assertThat(progressRepository.savedCompletion.accuracyRate()).isEqualByComparingTo("100.00");
         assertThat(sessionRepository.sessions.get(10L).status()).isEqualTo(TrainingSessionStatus.COMPLETED);
         assertThat(outboxEventRepository.saved.eventType()).isEqualTo("TrainingCompleted");
     }
@@ -266,6 +300,22 @@ class DocumentTrainingServiceTest {
                         "Explanation " + questionId
                 ))
                 .toList();
+    }
+
+    private static DocumentProgressResponse defaultProgress(int highestUnlockedLevel) {
+        return new DocumentProgressResponse(
+                TrainingType.DOCUMENT,
+                null,
+                0,
+                0,
+                null,
+                highestUnlockedLevel,
+                highestUnlockedLevel,
+                null,
+                null,
+                0,
+                null
+        );
     }
 
     static class FakeDocumentTrainingRepository implements DocumentTrainingRepository {
@@ -362,10 +412,14 @@ class DocumentTrainingServiceTest {
         }
     }
 
-    private static class NoOpTrainingProgressRepository implements TrainingProgressRepository {
+    private static class FakeTrainingProgressRepository implements TrainingProgressRepository {
+
+        private Optional<DocumentProgressResponse> documentProgress = Optional.empty();
+        private TrainingProgressCompletion savedCompletion;
 
         @Override
         public void applyCompletion(TrainingProgressCompletion completion) {
+            this.savedCompletion = completion;
         }
 
         @Override
@@ -380,7 +434,7 @@ class DocumentTrainingServiceTest {
 
         @Override
         public Optional<com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse> findDocumentProgress(long userId) {
-            return Optional.empty();
+            return documentProgress;
         }
 
         @Override

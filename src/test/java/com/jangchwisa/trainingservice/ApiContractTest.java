@@ -15,11 +15,14 @@ import com.jangchwisa.trainingservice.common.exception.GlobalExceptionHandler;
 import com.jangchwisa.trainingservice.common.security.CurrentUser;
 import com.jangchwisa.trainingservice.common.security.CurrentUserArgumentResolver;
 import com.jangchwisa.trainingservice.common.security.TrustedUserHeaderProperties;
+import com.jangchwisa.trainingservice.training.document.controller.DocumentTrainingController;
+import com.jangchwisa.trainingservice.training.document.service.DocumentTrainingService;
 import com.jangchwisa.trainingservice.training.focus.controller.FocusTrainingController;
 import com.jangchwisa.trainingservice.training.focus.dto.CompleteFocusSessionRequest;
 import com.jangchwisa.trainingservice.training.focus.dto.CompleteFocusSessionResponse;
 import com.jangchwisa.trainingservice.training.focus.service.FocusTrainingService;
 import com.jangchwisa.trainingservice.training.progress.controller.TrainingProgressController;
+import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse;
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingLevelResponse;
 import com.jangchwisa.trainingservice.training.progress.dto.TrainingProgressSummaryResponse;
 import com.jangchwisa.trainingservice.training.progress.service.TrainingProgressService;
@@ -305,6 +308,38 @@ class ApiContractTest {
                 .andExpect(jsonPath("$.data.unlockedNextLevel").value(true))
                 .andExpect(jsonPath("$.data.currentLevel").value(3))
                 .andExpect(jsonPath("$.data.highestUnlockedLevel").value(3));
+    }
+
+    @Test
+    void documentProgressApiMatchesContractAndUsesTrustedHeaderUserId() throws Exception {
+        DocumentTrainingService service = mock(DocumentTrainingService.class);
+        when(service.getProgress(7L)).thenReturn(new DocumentProgressResponse(
+                TrainingType.DOCUMENT,
+                50L,
+                4,
+                5,
+                80,
+                2,
+                3,
+                2,
+                BigDecimal.valueOf(80.0),
+                4,
+                LocalDateTime.of(2026, 4, 27, 10, 40)
+        ));
+
+        mockMvc(new DocumentTrainingController(service))
+                .perform(get("/api/trainings/document/progress")
+                        .param("userId", "999")
+                        .header("X-User-Id", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.trainingType").value("DOCUMENT"))
+                .andExpect(jsonPath("$.data.currentLevel").value(2))
+                .andExpect(jsonPath("$.data.highestUnlockedLevel").value(3))
+                .andExpect(jsonPath("$.data.lastPlayedLevel").value(2))
+                .andExpect(jsonPath("$.data.lastAccuracyRate").value(80.0));
+
+        verify(service).getProgress(7L);
     }
 
     private MockMvc mockMvc(Object controller) {

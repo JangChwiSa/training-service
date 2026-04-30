@@ -2,22 +2,31 @@ package com.jangchwisa.trainingservice.training.progress.dto;
 
 import com.jangchwisa.trainingservice.training.session.entity.TrainingType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record DocumentProgressResponse(
-        @Schema(description = "훈련 유형입니다.", example = "DOCUMENT")
+        @Schema(description = "Training type.", example = "DOCUMENT")
         TrainingType trainingType,
-        @Schema(description = "최근 완료한 문서 이해 훈련 세션 ID입니다. 기록이 없으면 null입니다.", example = "30")
+        @Schema(description = "Most recent completed document training session id. Null when no completion exists.", example = "30")
         Long recentSessionId,
-        @Schema(description = "누적 또는 최근 문서 이해 훈련 정답 수입니다.", example = "8")
+        @Schema(description = "Most recent document training correct answer count.", example = "4")
         int correctCount,
-        @Schema(description = "누적 또는 최근 문서 이해 훈련 전체 문제 수입니다.", example = "10")
+        @Schema(description = "Most recent document training total question count.", example = "5")
         int totalCount,
-        @Schema(description = "최근 문서 이해 훈련 점수입니다. 기록이 없으면 null입니다.", example = "80")
+        @Schema(description = "Most recent document training score. Null when no completion exists.", example = "80")
         Integer recentScore,
-        @Schema(description = "완료한 문서 이해 훈련 횟수입니다.", example = "4")
+        @Schema(description = "Current document training level reached by the user.", example = "2")
+        int currentLevel,
+        @Schema(description = "Highest document training level the user can currently play.", example = "3")
+        int highestUnlockedLevel,
+        @Schema(description = "Most recent document training level played by the user. Null when no completion exists.", example = "2")
+        Integer lastPlayedLevel,
+        @Schema(description = "Most recent document training accuracy rate in percent. Null when no completion exists.", example = "80.0")
+        BigDecimal lastAccuracyRate,
+        @Schema(description = "Completed document training count.", example = "4")
         int completedCount,
-        @Schema(description = "마지막 문서 이해 훈련 완료 시각입니다. 기록이 없으면 null입니다.", example = "2026-04-27T10:40:00")
+        @Schema(description = "Most recent document training completion time. Null when no completion exists.", example = "2026-04-27T10:40:00")
         LocalDateTime lastCompletedAt
 ) implements TrainingProgressResponse {
 }

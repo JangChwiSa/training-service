@@ -9,6 +9,7 @@ import com.jangchwisa.trainingservice.training.document.dto.StartDocumentSession
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
 import com.jangchwisa.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
 import com.jangchwisa.trainingservice.training.document.service.DocumentTrainingService;
+import com.jangchwisa.trainingservice.training.progress.dto.DocumentProgressResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
@@ -24,6 +25,15 @@ public class DocumentTrainingController {
 
     public DocumentTrainingController(DocumentTrainingService documentTrainingService) {
         this.documentTrainingService = documentTrainingService;
+    }
+
+    @Operation(
+            summary = "문서 이해 진행 상태 조회",
+            description = "사용자의 현재 문서 이해 훈련 레벨, 해금 레벨, 최근 수행 결과를 조회합니다."
+    )
+    @GetMapping("/api/trainings/document/progress")
+    public ApiResponse<DocumentProgressResponse> getProgress(@AuthenticatedUser CurrentUser currentUser) {
+        return ApiResponse.success(documentTrainingService.getProgress(currentUser.userId()));
     }
 
     @Operation(

@@ -120,6 +120,10 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
                     correct_count = ?,
                     total_count = ?,
                     recent_score = ?,
+                    current_level = ?,
+                    highest_unlocked_level = ?,
+                    last_played_level = ?,
+                    last_accuracy_rate = ?,
                     completed_count = completed_count + 1,
                     last_completed_at = ?,
                     updated_at = ?
@@ -131,6 +135,10 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
                 completion.correctCount(),
                 completion.totalCount(),
                 completion.score(),
+                completion.currentLevel(),
+                completion.highestUnlockedLevel(),
+                completion.playedLevel(),
+                completion.accuracyRate(),
                 Timestamp.valueOf(completion.completedAt()),
                 Timestamp.valueOf(completion.completedAt()),
                 completion.userId()
@@ -139,9 +147,10 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
             String insertSql = """
                     INSERT INTO user_document_progress (
                         user_id, recent_session_id, correct_count, total_count, recent_score,
+                        current_level, highest_unlocked_level, last_played_level, last_accuracy_rate,
                         completed_count, last_completed_at, updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """;
             jdbcTemplate.update(
                     insertSql,
@@ -150,6 +159,10 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
                     completion.correctCount(),
                     completion.totalCount(),
                     completion.score(),
+                    completion.currentLevel(),
+                    completion.highestUnlockedLevel(),
+                    completion.playedLevel(),
+                    completion.accuracyRate(),
                     Timestamp.valueOf(completion.completedAt()),
                     Timestamp.valueOf(completion.completedAt())
             );
@@ -269,6 +282,7 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
     public Optional<DocumentProgressResponse> findDocumentProgress(long userId) {
         String sql = """
                 SELECT recent_session_id, correct_count, total_count, recent_score,
+                       current_level, highest_unlocked_level, last_played_level, last_accuracy_rate,
                        completed_count, last_completed_at
                 FROM user_document_progress
                 WHERE user_id = ?
@@ -279,6 +293,10 @@ public class JdbcTrainingProgressRepository implements TrainingProgressRepositor
                 resultSet.getInt("correct_count"),
                 resultSet.getInt("total_count"),
                 nullableInteger(resultSet.getObject("recent_score")),
+                resultSet.getInt("current_level"),
+                resultSet.getInt("highest_unlocked_level"),
+                nullableInteger(resultSet.getObject("last_played_level")),
+                resultSet.getBigDecimal("last_accuracy_rate"),
                 resultSet.getInt("completed_count"),
                 resultSet.getTimestamp("last_completed_at") == null
                         ? null
