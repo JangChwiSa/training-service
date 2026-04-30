@@ -913,7 +913,9 @@ training_sessions.current_step 갱신
 ```json
 {
   "selectedResult": {
-    "correct": true
+    "correct": true,
+    "resultText": "관리자에게 알린 선택은 적절합니다.",
+    "effectText": "관리자가 위험 구역을 표시하고 다음 장면으로 이동합니다."
   },
   "nextScene": {
     "sceneId": 2,
@@ -1133,7 +1135,20 @@ document_session_questions에 배정 문제 5개와 display_order 저장
       "title": "근무 시간 변경 안내",
       "documentText": "오늘부터 근무 시간이 오전 9시로 변경됩니다.",
       "questionText": "변경된 근무 시작 시간은 언제인가요?",
-      "questionType": "SHORT_ANSWER"
+      "questionType": "SHORT_ANSWER",
+      "choices": []
+    },
+    {
+      "questionId": 26,
+      "title": "신입사원 워크숍 안내",
+      "documentText": "이번 신입사원 워크숍은 5월 10일 강원도 속초에서 진행됩니다.",
+      "questionText": "위 글의 내용과 일치하지 않는 것은 무엇인가요?",
+      "questionType": "MULTIPLE_CHOICE",
+      "choices": [
+        { "choiceId": 1, "choiceOrder": 1, "text": "워크숍 장소는 강원도 속초이다." },
+        { "choiceId": 2, "choiceOrder": 2, "text": "오전 8시까지 버스에 타야 한다." },
+        { "choiceId": 3, "choiceOrder": 3, "text": "숙소 안에서 직접 음식을 만들어 먹을 수 있다." }
+      ]
     }
   ]
 }
@@ -1153,6 +1168,10 @@ document_session_questions에 배정 문제 5개와 display_order 저장
     {
       "questionId": 1,
       "userAnswer": "오전 9시"
+    },
+    {
+      "questionId": 26,
+      "choiceId": 3
     }
   ]
 }
@@ -1165,6 +1184,7 @@ session_id가 현재 user_id의 세션인지 검증
 document_session_questions에서 배정 문제 조회
 제출 questionId 목록이 배정된 5문제와 정확히 일치하는지 검증
 배정된 문제 기준으로 document_questions 정답 조회
+MULTIPLE_CHOICE 문제는 document_question_choices의 choice_id 기준으로 채점
 document_answer_logs 저장
 training_scores 저장
   score_type = ACCURACY_RATE
@@ -1182,6 +1202,7 @@ TrainingCompleted 이벤트 발행
 | level이 1~5 범위를 벗어남 | VALIDATION_ERROR |
 | 요청 레벨의 활성 문제가 5개 미만 | CONFLICT |
 | 제출 questionId가 배정된 5문제와 정확히 일치하지 않음 | VALIDATION_ERROR |
+| SHORT_ANSWER에 userAnswer가 없거나 MULTIPLE_CHOICE에 choiceId가 없음 | VALIDATION_ERROR |
 
 ### Response
 

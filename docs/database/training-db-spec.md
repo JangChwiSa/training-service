@@ -174,12 +174,17 @@ CHECK: training_type != 'FOCUS' OR sub_type IS NOT NULL
 | 속성명 | 설명 |
 | --- | --- |
 | scenario_id | 시나리오 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | job_type | 직무 유형 |
+| category_code | 사회성 상황 분류 코드 |
+| situation_order | 카테고리 내 표시 순서 |
 | title | 시나리오 제목 |
 | background_text | 배경 설명 |
 | situation_text | 상황 설명 |
 | character_info | 등장 인물 정보 |
 | difficulty | 난이도 |
+| evaluation_point | 평가 기준 |
+| example_answer | 예시 답변 |
 | is_active | 사용 여부 |
 
 ### 제약 조건
@@ -189,6 +194,7 @@ PK: scenario_id
 NOT NULL: job_type, title, situation_text
 CHECK: job_type IN ('OFFICE','LABOR')
 DEFAULT: is_active = true
+UNIQUE: seed_code
 ```
 
 ## 3.3 social_dialog_logs
@@ -254,6 +260,7 @@ CHECK: completed_count >= 0
 | 속성명 | 설명 |
 | --- | --- |
 | scenario_id | 시나리오 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | title | 시나리오 제목 |
 | category | 안전 훈련 상황 분류 |
 | description | 시나리오 설명 |
@@ -267,6 +274,7 @@ PK: scenario_id
 NOT NULL: title, category, is_active, created_at
 CHECK: category IN ('SEXUAL_EDUCATION', 'INFECTIOUS_DISEASE', 'COMMUTE_SAFETY')
 DEFAULT: is_active = true
+UNIQUE: seed_code
 ```
 
 ## 3.5 safety_scenes
@@ -278,6 +286,7 @@ DEFAULT: is_active = true
 | 속성명 | 설명 |
 | --- | --- |
 | scene_id | 장면 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | scenario_id | 시나리오 ID |
 | scene_order | 장면 순서 |
 | screen_info | 화면 정보 |
@@ -292,6 +301,7 @@ PK: scene_id
 FK: scenario_id → safety_scenarios.scenario_id
 NOT NULL: scenario_id, scene_order, situation_text, question_text, is_end_scene
 UNIQUE: scenario_id + scene_order
+UNIQUE: seed_code
 DEFAULT: is_end_scene = false
 ```
 
@@ -304,10 +314,14 @@ DEFAULT: is_end_scene = false
 | 속성명 | 설명 |
 | --- | --- |
 | choice_id | 선택지 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | scene_id | 장면 ID |
+| choice_order | 선택지 표시 순서 |
 | choice_text | 선택지 내용 |
 | next_scene_id | 다음 장면 ID |
 | is_correct | 올바른 선택 여부 |
+| result_text | 선택 결과 문구 |
+| effect_text | 선택 효과 문구 |
 
 ### 제약 조건
 
@@ -316,6 +330,7 @@ PK: choice_id
 FK: scene_id → safety_scenes.scene_id
 FK: next_scene_id → safety_scenes.scene_id
 NOT NULL: scene_id, choice_text, is_correct
+UNIQUE: seed_code
 ```
 
 ## 3.7 safety_action_logs
@@ -495,6 +510,7 @@ CHECK: last_average_reaction_ms >= 0
 | 속성명 | 설명 |
 | --- | --- |
 | question_id | 문제 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
 | title | 문제 제목 |
 | document_text | 문서 본문 |
 | question_text | 질문 내용 |
@@ -502,6 +518,8 @@ CHECK: last_average_reaction_ms >= 0
 | correct_answer | 정답 |
 | explanation | 해설 |
 | difficulty | 난이도 |
+| correct_feedback | 정답 피드백 |
+| wrong_feedback | 오답 피드백 |
 | is_active | 사용 여부 |
 
 ### 제약 조건
@@ -511,12 +529,39 @@ PK: question_id
 NOT NULL: title, question_text, correct_answer, difficulty
 CHECK: difficulty IN ('LEVEL_1', 'LEVEL_2', 'LEVEL_3', 'LEVEL_4', 'LEVEL_5')
 DEFAULT: is_active = true
+UNIQUE: seed_code
 ```
 
 ### Index
 
 ```text
 document_questions(difficulty, is_active)
+```
+
+## 3.11.1 document_question_choices
+
+문서 이해 객관식 문제의 선택지를 저장하기 위한 테이블.
+
+### 속성
+
+| 속성명 | 설명 |
+| --- | --- |
+| choice_id | 선택지 고유 ID |
+| seed_code | seed 콘텐츠 식별자 |
+| question_id | 문서 이해 문제 ID |
+| choice_order | 선택지 표시 순서 |
+| choice_text | 선택지 내용 |
+| is_correct | 정답 선택지 여부 |
+
+### 제약 조건
+
+```text
+PK: choice_id
+FK: question_id → document_questions.question_id
+UNIQUE: seed_code
+UNIQUE: question_id + choice_order
+NOT NULL: question_id, choice_order, choice_text, is_correct
+CHECK: choice_order >= 1
 ```
 
 ## 3.12 document_session_questions

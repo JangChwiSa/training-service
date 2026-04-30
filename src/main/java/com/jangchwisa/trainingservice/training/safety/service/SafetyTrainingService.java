@@ -99,7 +99,10 @@ public class SafetyTrainingService {
         safetyTrainingRepository.saveActionLog(sessionId, sceneId, choiceId, choice.correct());
         trainingSessionService.advanceCurrentStep(sessionId, nextScene == null ? (int) sceneId : (int) nextScene.sceneId());
 
-        return new NextSafetySceneResponse(new SafetySelectedResultResponse(choice.correct()), nextScene);
+        return new NextSafetySceneResponse(
+                new SafetySelectedResultResponse(choice.correct(), choice.resultText(), choice.effectText()),
+                nextScene
+        );
     }
 
     @Transactional(readOnly = true)

@@ -46,9 +46,14 @@ class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
             assertThat(tableExists(connection, "focus_reaction_logs")).isTrue();
             assertThat(tableExists(connection, "user_focus_progress")).isTrue();
             assertThat(tableExists(connection, "document_questions")).isTrue();
+            assertThat(tableExists(connection, "document_question_choices")).isTrue();
             assertThat(tableExists(connection, "document_session_questions")).isTrue();
             assertThat(tableExists(connection, "document_answer_logs")).isTrue();
             assertThat(tableExists(connection, "user_document_progress")).isTrue();
+            assertThat(columnExists(connection, "social_scenarios", "seed_code")).isTrue();
+            assertThat(columnExists(connection, "social_scenarios", "evaluation_point")).isTrue();
+            assertThat(columnExists(connection, "safety_choices", "result_text")).isTrue();
+            assertThat(columnExists(connection, "document_questions", "correct_feedback")).isTrue();
             assertThat(contentTableUserIdColumnCount(connection)).isZero();
             assertThat(userIdForeignKeyCount(connection)).isZero();
         }
@@ -93,6 +98,26 @@ class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
         }
     }
 
+    private boolean columnExists(Connection connection, String tableName, String columnName) throws Exception {
+        String sql = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND column_name = ?
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, tableName);
+            statement.setString(2, columnName);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1) == 1;
+            }
+        }
+    }
+
     private int userIdForeignKeyCount(Connection connection) throws Exception {
         String sql = """
                 SELECT COUNT(*)
@@ -121,7 +146,8 @@ class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
                       'safety_scenes',
                       'safety_choices',
                       'focus_level_rules',
-                      'document_questions'
+                      'document_questions',
+                      'document_question_choices'
                   )
                 """;
 

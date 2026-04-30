@@ -98,7 +98,7 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
                 SELECT choice_id, choice_text
                 FROM safety_choices
                 WHERE scene_id = ?
-                ORDER BY choice_id ASC
+                ORDER BY COALESCE(choice_order, choice_id) ASC
                 """;
         return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new SafetyChoiceResponse(
                 resultSet.getLong("choice_id"),
@@ -109,7 +109,7 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
     @Override
     public Optional<SafetyChoiceRow> findChoice(long sceneId, long choiceId) {
         String sql = """
-                SELECT choice_id, scene_id, next_scene_id, is_correct
+                SELECT choice_id, scene_id, next_scene_id, is_correct, result_text, effect_text
                 FROM safety_choices
                 WHERE scene_id = ?
                   AND choice_id = ?
@@ -118,7 +118,9 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
                 resultSet.getLong("choice_id"),
                 resultSet.getLong("scene_id"),
                 nullableLong(resultSet.getObject("next_scene_id")),
-                resultSet.getBoolean("is_correct")
+                resultSet.getBoolean("is_correct"),
+                resultSet.getString("result_text"),
+                resultSet.getString("effect_text")
         ), sceneId, choiceId);
         return choices.stream().findFirst();
     }

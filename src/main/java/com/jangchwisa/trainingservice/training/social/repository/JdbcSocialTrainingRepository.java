@@ -162,7 +162,12 @@ public class JdbcSocialTrainingRepository implements SocialTrainingRepository {
             case "EASY" -> 1;
             case "MEDIUM" -> 2;
             case "HARD" -> 3;
-            default -> Integer.valueOf(normalized);
+            default -> {
+                if (normalized.startsWith("LEVEL_")) {
+                    yield Integer.valueOf(normalized.substring("LEVEL_".length()));
+                }
+                yield Integer.valueOf(normalized);
+            }
         };
     }
 }

@@ -74,7 +74,8 @@ class DocumentTrainingControllerTest {
                 .andExpect(jsonPath("$.data.questions.length()").value(5))
                 .andExpect(jsonPath("$.data.questions[0].questionId").value(1))
                 .andExpect(jsonPath("$.data.questions[0].title").value("Document question 1"))
-                .andExpect(jsonPath("$.data.questions[0].questionType").value("SHORT_ANSWER"));
+                .andExpect(jsonPath("$.data.questions[0].questionType").value("SHORT_ANSWER"))
+                .andExpect(jsonPath("$.data.questions[0].choices.length()").value(0));
     }
 
     @Test

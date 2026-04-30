@@ -107,7 +107,14 @@ class SafetyTrainingControllerTest {
                 1L,
                 LocalDateTime.of(2026, 4, 28, 10, 0)
         ).withSessionId(20L));
-        safetyRepository.choices.put("1:2", new SafetyTrainingRepository.SafetyChoiceRow(2L, 1L, 3L, true));
+        safetyRepository.choices.put("1:2", new SafetyTrainingRepository.SafetyChoiceRow(
+                2L,
+                1L,
+                3L,
+                true,
+                "Good choice",
+                "Move safely"
+        ));
         safetyRepository.scenes.put(3L, scene(3L, false));
 
         mockMvc.perform(post("/api/trainings/safety/sessions/20/next-scene")
@@ -116,6 +123,8 @@ class SafetyTrainingControllerTest {
                         .content("{\"sceneId\":1,\"choiceId\":2}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.selectedResult.correct").value(true))
+                .andExpect(jsonPath("$.data.selectedResult.resultText").value("Good choice"))
+                .andExpect(jsonPath("$.data.selectedResult.effectText").value("Move safely"))
                 .andExpect(jsonPath("$.data.nextScene.sceneId").value(3));
     }
 

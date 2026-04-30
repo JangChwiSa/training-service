@@ -82,12 +82,21 @@ class SafetyTrainingServiceTest {
                 1L,
                 java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
         ).withSessionId(20L));
-        safetyRepository.choices.put("1:2", new SafetyTrainingRepository.SafetyChoiceRow(2L, 1L, 3L, true));
+        safetyRepository.choices.put("1:2", new SafetyTrainingRepository.SafetyChoiceRow(
+                2L,
+                1L,
+                3L,
+                true,
+                "Good choice",
+                "Move safely"
+        ));
         safetyRepository.scenes.put(3L, scene(3L, false));
 
         NextSafetySceneResponse response = service.nextScene(new CurrentUser(1L), 20L, 1L, 2L);
 
         assertThat(response.selectedResult().correct()).isTrue();
+        assertThat(response.selectedResult().resultText()).isEqualTo("Good choice");
+        assertThat(response.selectedResult().effectText()).isEqualTo("Move safely");
         assertThat(response.nextScene().sceneId()).isEqualTo(3L);
         assertThat(safetyRepository.savedActionLogs).containsExactly(new SafetyActionLogResponse(1L, 2L, true));
         assertThat(sessionRepository.sessions.get(20L).currentStep()).isEqualTo(3);

@@ -215,6 +215,29 @@ class DocumentTrainingServiceTest {
         assertThat(outboxEventRepository.saved.eventType()).isEqualTo("TrainingCompleted");
     }
 
+    @Test
+    void submitsMultipleChoiceAnswerUsingChoiceId() {
+        DocumentQuestionAnswerRow question = new DocumentQuestionAnswerRow(
+                1L,
+                "Multiple choice question",
+                "Choose the correct answer.",
+                "MULTIPLE_CHOICE",
+                "Correct choice",
+                "Explanation",
+                2L,
+                Map.of(1L, "Wrong choice", 2L, "Correct choice")
+        );
+
+        ScoredDocumentAnswer scoredAnswer = ScoredDocumentAnswer.from(
+                new DocumentAnswerRequest(1L, null, 2L),
+                question
+        );
+
+        assertThat(scoredAnswer.correct()).isTrue();
+        assertThat(scoredAnswer.userAnswer()).isEqualTo("Correct choice");
+        assertThat(scoredAnswer.correctAnswer()).isEqualTo("Correct choice");
+    }
+
     private static DocumentQuestionResponse question(long questionId) {
         return new DocumentQuestionResponse(
                 questionId,

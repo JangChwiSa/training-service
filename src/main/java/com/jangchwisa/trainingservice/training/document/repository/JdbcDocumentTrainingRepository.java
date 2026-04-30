@@ -1,8 +1,11 @@
 package com.jangchwisa.trainingservice.training.document.repository;
 
 import com.jangchwisa.trainingservice.training.document.dto.DocumentAnswerDetailResponse;
+import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionChoiceResponse;
 import com.jangchwisa.trainingservice.training.document.dto.DocumentQuestionResponse;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -29,7 +32,8 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
                 resultSet.getString("title"),
                 resultSet.getString("document_text"),
                 resultSet.getString("question_text"),
-                resultSet.getString("question_type")
+                resultSet.getString("question_type"),
+                findChoices(resultSet.getLong("question_id"))
         ));
     }
 
@@ -48,7 +52,8 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
                 resultSet.getString("title"),
                 resultSet.getString("document_text"),
                 resultSet.getString("question_text"),
-                resultSet.getString("question_type")
+                resultSet.getString("question_type"),
+                findChoices(resultSet.getLong("question_id"))
         ), difficulty, limit);
     }
 
@@ -82,6 +87,7 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
                 SELECT question.question_id,
                        question.title,
                        question.question_text,
+                       question.question_type,
                        question.correct_answer,
                        question.explanation
                 FROM document_session_questions session_question
@@ -89,10 +95,11 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
                 WHERE session_question.session_id = ?
                 ORDER BY session_question.display_order ASC
                 """;
-        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionAnswerRow(
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> toQuestionAnswerRow(
                 resultSet.getLong("question_id"),
                 resultSet.getString("title"),
                 resultSet.getString("question_text"),
+                resultSet.getString("question_type"),
                 resultSet.getString("correct_answer"),
                 resultSet.getString("explanation")
         ), sessionId);
@@ -105,15 +112,16 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
         }
         String placeholders = String.join(",", questionIds.stream().map(id -> "?").toList());
         String sql = """
-                SELECT question_id, title, question_text, correct_answer, explanation
+                SELECT question_id, title, question_text, question_type, correct_answer, explanation
                 FROM document_questions
                 WHERE question_id IN (%s)
                   AND is_active = true
                 """.formatted(placeholders);
-        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionAnswerRow(
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> toQuestionAnswerRow(
                 resultSet.getLong("question_id"),
                 resultSet.getString("title"),
                 resultSet.getString("question_text"),
+                resultSet.getString("question_type"),
                 resultSet.getString("correct_answer"),
                 resultSet.getString("explanation")
         ), questionIds.toArray());
@@ -194,5 +202,65 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
                 resultSet.getBoolean("is_correct"),
                 resultSet.getString("explanation")
         ), sessionId);
+    }
+
+    private DocumentQuestionAnswerRow toQuestionAnswerRow(
+            long questionId,
+            String title,
+            String questionText,
+            String questionType,
+            String correctAnswer,
+            String explanation
+    ) {
+        return new DocumentQuestionAnswerRow(
+                questionId,
+                title,
+                questionText,
+                questionType,
+                correctAnswer,
+                explanation,
+                findCorrectChoiceId(questionId),
+                findChoiceTextById(questionId)
+        );
+    }
+
+    private List<DocumentQuestionChoiceResponse> findChoices(long questionId) {
+        String sql = """
+                SELECT choice_id, choice_order, choice_text
+                FROM document_question_choices
+                WHERE question_id = ?
+                ORDER BY choice_order ASC
+                """;
+        return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionChoiceResponse(
+                resultSet.getLong("choice_id"),
+                resultSet.getInt("choice_order"),
+                resultSet.getString("choice_text")
+        ), questionId);
+    }
+
+    private Long findCorrectChoiceId(long questionId) {
+        String sql = """
+                SELECT choice_id
+                FROM document_question_choices
+                WHERE question_id = ?
+                  AND is_correct = true
+                LIMIT 1
+                """;
+        List<Long> choiceIds = jdbcTemplate.queryForList(sql, Long.class, questionId);
+        return choiceIds.isEmpty() ? null : choiceIds.getFirst();
+    }
+
+    private Map<Long, String> findChoiceTextById(long questionId) {
+        String sql = """
+                SELECT choice_id, choice_text
+                FROM document_question_choices
+                WHERE question_id = ?
+                ORDER BY choice_order ASC
+                """;
+        Map<Long, String> choices = new LinkedHashMap<>();
+        jdbcTemplate.query(sql, resultSet -> {
+            choices.put(resultSet.getLong("choice_id"), resultSet.getString("choice_text"));
+        }, questionId);
+        return choices;
     }
 }
