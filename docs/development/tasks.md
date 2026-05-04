@@ -2,164 +2,164 @@
 
 ## 1. Purpose
 
-이 문서는 Training Service 구현 작업을 작은 단위의 task로 나누기 위한 기준 문서이다.
+??臾몄꽌??Training Service 援ы쁽 ?묒뾽???묒? ?⑥쐞??task濡??섎늻湲??꾪븳 湲곗? 臾몄꽌?대떎.
 
-각 task는 별도 브랜치에서 작업할 수 있을 정도로 나누며, API, DB, 인프라, 코드 품질, 테스트가 함께 완성되는 순서로 진행한다.
+媛?task??蹂꾨룄 釉뚮옖移섏뿉???묒뾽?????덉쓣 ?뺣룄濡??섎늻硫? API, DB, ?명봽?? 肄붾뱶 ?덉쭏, ?뚯뒪?멸? ?④퍡 ?꾩꽦?섎뒗 ?쒖꽌濡?吏꾪뻾?쒕떎.
 
 ## 2. Task Rules
 
 ```text
-- main 브랜치에 직접 구현하지 않는다.
-- 구현 작업은 feature/* 브랜치를 사용한다.
-- 문서만 수정하는 작업은 docs/* 브랜치를 사용한다.
-- 한 브랜치에는 하나의 목적만 담는다.
-- API 또는 DB 계약 변경이 필요하면 구현보다 먼저 문서를 수정한다.
-- 각 task는 테스트 또는 검증 기준을 포함해야 완료로 본다.
-- task 시작 전 관련 API/DB/architecture 문서가 존재하고 서로 충돌하지 않는지 확인한다.
-- 필수 문서가 없거나 outbox처럼 구현에 필요한 DB 계약이 누락되어 있으면 구현 task보다 문서 정합성 task를 먼저 수행한다.
+- main 釉뚮옖移섏뿉 吏곸젒 援ы쁽?섏? ?딅뒗??
+- 援ы쁽 ?묒뾽? feature/* 釉뚮옖移섎? ?ъ슜?쒕떎.
+- 臾몄꽌留??섏젙?섎뒗 ?묒뾽? docs/* 釉뚮옖移섎? ?ъ슜?쒕떎.
+- ??釉뚮옖移섏뿉???섎굹??紐⑹쟻留??대뒗??
+- API ?먮뒗 DB 怨꾩빟 蹂寃쎌씠 ?꾩슂?섎㈃ 援ы쁽蹂대떎 癒쇱? 臾몄꽌瑜??섏젙?쒕떎.
+- 媛?task???뚯뒪???먮뒗 寃利?湲곗????ы븿?댁빞 ?꾨즺濡?蹂몃떎.
+- task ?쒖옉 ??愿??API/DB/architecture 臾몄꽌媛 議댁옱?섍퀬 ?쒕줈 異⑸룎?섏? ?딅뒗吏 ?뺤씤?쒕떎.
+- ?꾩닔 臾몄꽌媛 ?녾굅??outbox泥섎읆 援ы쁽???꾩슂??DB 怨꾩빟???꾨씫?섏뼱 ?덉쑝硫?援ы쁽 task蹂대떎 臾몄꽌 ?뺥빀??task瑜?癒쇱? ?섑뻾?쒕떎.
 ```
 
 ## 2.1 Current Documentation Status
 
-구현 시작 전 다음 문서 정합성 상태를 확인한다.
+援ы쁽 ?쒖옉 ???ㅼ쓬 臾몄꽌 ?뺥빀???곹깭瑜??뺤씤?쒕떎.
 
 ```text
-- AGENTS.md에서 요구하는 docs/product/project-plan.md가 존재한다.
-- event outbox 테이블은 docs/database/db-spec.md와 docs/database/training-db-spec.md에 outbox_events로 정의되어 있다.
+- AGENTS.md?먯꽌 ?붽뎄?섎뒗 docs/product/project-plan.md媛 議댁옱?쒕떎.
+- event outbox ?뚯씠釉붿? docs/database/db-spec.md? docs/database/training-db-spec.md??outbox_events濡??뺤쓽?섏뼱 ?덈떎.
 ```
 
-진행 기준:
+吏꾪뻾 湲곗?:
 
-- 구현 task 시작 전 `docs/product/project-plan.md`를 포함한 관련 문서를 먼저 읽는다.
-- outbox 구현 task는 DB spec의 `outbox_events` 계약을 기준으로 진행한다.
+- 援ы쁽 task ?쒖옉 ??`docs/product/project-plan.md`瑜??ы븿??愿??臾몄꽌瑜?癒쇱? ?쎈뒗??
+- outbox 援ы쁽 task??DB spec??`outbox_events` 怨꾩빟??湲곗??쇰줈 吏꾪뻾?쒕떎.
 
 ## 3. Phase 0 - Project Scaffold
 
-### Task 0.1 Spring Boot 프로젝트 생성
+### Task 0.1 Spring Boot ?꾨줈?앺듃 ?앹꽦
 
 ```text
 Branch: feature/project-scaffold
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/training-service-architecture.md`
 - `docs/development/local-development.md`
 - `docs/development/git-strategy.md`
 
-작업:
+?묒뾽:
 
-- Spring Boot 4.0.6 프로젝트 생성
-- Java 21 설정
-- 기본 package를 `com.jangchwisa.trainingservice`로 설정
-- Maven 또는 Gradle 빌드 파일 구성
-- 기본 application entrypoint 생성
-- `local`, `test` profile 분리
+- Spring Boot 4.0.6 ?꾨줈?앺듃 ?앹꽦
+- Java 21 ?ㅼ젙
+- 湲곕낯 package瑜?`com.didgo.trainingservice`濡??ㅼ젙
+- Maven ?먮뒗 Gradle 鍮뚮뱶 ?뚯씪 援ъ꽦
+- 湲곕낯 application entrypoint ?앹꽦
+- `local`, `test` profile 遺꾨━
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 애플리케이션이 로컬에서 기동된다.
-- 기본 context load test가 통과한다.
-- 빌드 명령이 성공한다.
+- ?좏뵆由ъ??댁뀡??濡쒖뺄?먯꽌 湲곕룞?쒕떎.
+- 湲곕낯 context load test媛 ?듦낵?쒕떎.
+- 鍮뚮뱶 紐낅졊???깃났?쒕떎.
 
-### Task 0.2 기본 패키지 구조 생성
+### Task 0.2 湲곕낯 ?⑦궎吏 援ъ“ ?앹꽦
 
 ```text
 Branch: feature/package-structure
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/training-service-architecture.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
-- `common`, `config`, `training`, `event`, `external`, `support` 패키지 생성
-- `training.session`, `training.social`, `training.safety`, `training.focus`, `training.document`, `training.progress`, `training.score`, `training.feedback`, `training.summary` 하위 구조 생성
-- 빈 패키지만 두지 않고 최소 marker class 또는 실제 초기 구성 클래스로 유지
+- `common`, `config`, `training`, `event`, `external`, `support` ?⑦궎吏 ?앹꽦
+- `training.session`, `training.social`, `training.safety`, `training.focus`, `training.document`, `training.progress`, `training.score`, `training.feedback`, `training.summary` ?섏쐞 援ъ“ ?앹꽦
+- 鍮??⑦궎吏留??먯? ?딄퀬 理쒖냼 marker class ?먮뒗 ?ㅼ젣 珥덇린 援ъ꽦 ?대옒?ㅻ줈 ?좎?
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 문서의 패키지 구조와 실제 코드 구조가 일치한다.
-- 불필요한 broad utility 패키지가 없다.
+- 臾몄꽌???⑦궎吏 援ъ“? ?ㅼ젣 肄붾뱶 援ъ“媛 ?쇱튂?쒕떎.
+- 遺덊븘?뷀븳 broad utility ?⑦궎吏媛 ?녿떎.
 
 ## 4. Phase 1 - Local Infrastructure
 
-### Task 1.1 Docker 로컬 실행 환경 구성
+### Task 1.1 Docker 濡쒖뺄 ?ㅽ뻾 ?섍꼍 援ъ꽦
 
 ```text
 Branch: feature/local-docker
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/development/local-development.md`
 - `docs/architecture/training-service-architecture.md`
 - `docs/architecture/overall-architecture.md`
 
-작업:
+?묒뾽:
 
-- `Dockerfile` 작성
-- `docker-compose.yml` 작성
-- Training Service 컨테이너와 MySQL 컨테이너 구성
-- MySQL database를 `training_db`로 설정
-- MySQL healthcheck 구성
+- `Dockerfile` ?묒꽦
+- `docker-compose.yml` ?묒꽦
+- Training Service 而⑦뀒?대꼫? MySQL 而⑦뀒?대꼫 援ъ꽦
+- MySQL database瑜?`training_db`濡??ㅼ젙
+- MySQL healthcheck 援ъ꽦
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- `docker compose up --build`로 서비스와 MySQL이 기동된다.
-- 애플리케이션이 MySQL 연결을 확인할 수 있다.
-- Voice Service, User Service, Report Service 컨테이너를 포함하지 않는다.
+- `docker compose up --build`濡??쒕퉬?ㅼ? MySQL??湲곕룞?쒕떎.
+- ?좏뵆由ъ??댁뀡??MySQL ?곌껐???뺤씤?????덈떎.
+- Voice Service, User Service, Report Service 而⑦뀒?대꼫瑜??ы븿?섏? ?딅뒗??
 
-### Task 1.2 환경 변수 예시 파일 작성
+### Task 1.2 ?섍꼍 蹂???덉떆 ?뚯씪 ?묒꽦
 
 ```text
 Branch: chore/add-env-example
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/development/local-development.md`
 - `docs/architecture/security-context.md`
 - `docs/architecture/openai-integration.md`
 - `docs/architecture/event-outbox.md`
 
-작업:
+?묒뾽:
 
-- `.env.example` 작성
-- DB 접속 정보, OpenAI 설정, trusted user header, outbox/event 설정 예시 추가
-- 실제 secret 값은 포함하지 않음
+- `.env.example` ?묒꽦
+- DB ?묒냽 ?뺣낫, OpenAI ?ㅼ젙, trusted user header, outbox/event ?ㅼ젙 ?덉떆 異붽?
+- ?ㅼ젣 secret 媛믪? ?ы븿?섏? ?딆쓬
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- `.env.example`만으로 로컬 설정 항목을 파악할 수 있다.
-- 실제 API key, 운영 password가 저장소에 포함되지 않는다.
+- `.env.example`留뚯쑝濡?濡쒖뺄 ?ㅼ젙 ??ぉ???뚯븙?????덈떎.
+- ?ㅼ젣 API key, ?댁쁺 password媛 ??μ냼???ы븿?섏? ?딅뒗??
 
 ## 5. Phase 2 - Database Migration
 
-### Task 2.1 Migration 도구 설정
+### Task 2.1 Migration ?꾧뎄 ?ㅼ젙
 
 ```text
 Branch: feature/database-migration-setup
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/db-spec.md`
 - `docs/database/training-db-spec.md`
 - `docs/development/local-development.md`
 
-작업:
+?묒뾽:
 
-- Flyway 또는 Liquibase 설정
-- test profile에서 migration 실행되도록 구성
+- Flyway ?먮뒗 Liquibase ?ㅼ젙
+- test profile?먯꽌 migration ?ㅽ뻾?섎룄濡?援ъ꽦
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- migration 도구가 local/test profile에서 실행 가능하다.
-- migration 파일 위치, naming rule, 실행 profile이 문서화되어 있다.
-- 실제 schema 검증은 Task 2.2 이후 migration smoke test에서 수행한다.
+- migration ?꾧뎄媛 local/test profile?먯꽌 ?ㅽ뻾 媛?ν븯??
+- migration ?뚯씪 ?꾩튂, naming rule, ?ㅽ뻾 profile??臾몄꽌?붾릺???덈떎.
+- ?ㅼ젣 schema 寃利앹? Task 2.2 ?댄썑 migration smoke test?먯꽌 ?섑뻾?쒕떎.
 
 ### Task 2.2 Integration test baseline for migration
 
@@ -167,59 +167,59 @@ Branch: feature/database-migration-setup
 Branch: test/migration-baseline
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/db-spec.md`
 - `docs/database/training-db-spec.md`
 - `docs/development/local-development.md`
 
-작업:
+?묒뾽:
 
-- Testcontainers MySQL 구성
-- test profile에서 MySQL 기반 migration 검증이 가능하도록 설정
-- 빈 DB에서 migration이 끝까지 실행되는 smoke test 작성
+- Testcontainers MySQL 援ъ꽦
+- test profile?먯꽌 MySQL 湲곕컲 migration 寃利앹씠 媛?ν븯?꾨줉 ?ㅼ젙
+- 鍮?DB?먯꽌 migration???앷퉴吏 ?ㅽ뻾?섎뒗 smoke test ?묒꽦
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 로컬 테스트에서 MySQL 컨테이너 기반 migration 검증이 통과한다.
-- migration 실패 시 테스트가 실패한다.
-- 이후 schema task가 이 테스트 기반을 재사용할 수 있다.
+- 濡쒖뺄 ?뚯뒪?몄뿉??MySQL 而⑦뀒?대꼫 湲곕컲 migration 寃利앹씠 ?듦낵?쒕떎.
+- migration ?ㅽ뙣 ???뚯뒪?멸? ?ㅽ뙣?쒕떎.
+- ?댄썑 schema task媛 ???뚯뒪??湲곕컲???ъ궗?⑺븷 ???덈떎.
 
-### Task 2.3 Training DB core schema 작성
+### Task 2.3 Training DB core schema ?묒꽦
 
 ```text
 Branch: feature/training-core-schema
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/db-spec.md`
 - `docs/database/training-db-spec.md`
 - `docs/architecture/event-outbox.md`
 - `docs/api/training-api-spec.md`
 
-작업:
+?묒뾽:
 
 - `training_sessions`
 - `training_scores`
 - `training_feedbacks`
 - `training_session_summaries`
-- event outbox 테이블
+- event outbox ?뚯씠釉?
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- outbox 테이블은 DB spec에 컬럼, 상태값, retry/DLQ 관련 필드, 인덱스가 먼저 정의되어 있다.
-- `training_session_summaries`는 목록 API 스냅샷 조회에 필요한 필드를 포함한다.
-- `user_id`는 외부 사용자 ID 참조값으로 저장하고 `users.user_id` 물리 FK를 만들지 않는다.
-- `session_id` 기반 FK와 unique 제약이 문서와 일치한다.
+- outbox ?뚯씠釉붿? DB spec??而щ읆, ?곹깭媛? retry/DLQ 愿???꾨뱶, ?몃뜳?ㅺ? 癒쇱? ?뺤쓽?섏뼱 ?덈떎.
+- `training_session_summaries`??紐⑸줉 API ?ㅻ깄??議고쉶???꾩슂???꾨뱶瑜??ы븿?쒕떎.
+- `user_id`???몃? ?ъ슜??ID 李몄“媛믪쑝濡???ν븯怨?`users.user_id` 臾쇰━ FK瑜?留뚮뱾吏 ?딅뒗??
+- `session_id` 湲곕컲 FK? unique ?쒖빟??臾몄꽌? ?쇱튂?쒕떎.
 
-### Task 2.4 Training module schema 작성
+### Task 2.4 Training module schema ?묒꽦
 
 ```text
 Branch: feature/training-module-schema
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/db-spec.md`
 - `docs/database/training-db-spec.md`
@@ -228,7 +228,7 @@ Branch: feature/training-module-schema
 - `docs/modules/focus-training.md`
 - `docs/modules/document-training.md`
 
-작업:
+?묒뾽:
 
 - social tables
 - safety tables
@@ -236,19 +236,19 @@ Branch: feature/training-module-schema
 - document tables
 - user progress tables
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 모든 Training Service 소유 테이블이 migration에 포함된다.
-- 콘텐츠 테이블에는 `user_id`를 저장하지 않는다.
-- 사용자 수행 결과/progress/summary에는 `user_id`를 저장한다.
+- 紐⑤뱺 Training Service ?뚯쑀 ?뚯씠釉붿씠 migration???ы븿?쒕떎.
+- 肄섑뀗痢??뚯씠釉붿뿉??`user_id`瑜???ν븯吏 ?딅뒗??
+- ?ъ슜???섑뻾 寃곌낵/progress/summary?먮뒗 `user_id`瑜???ν븳??
 
-### Task 2.5 Local seed and fixture data 작성
+### Task 2.5 Local seed and fixture data ?묒꽦
 
 ```text
 Branch: feature/local-seed-data
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/training-db-spec.md`
 - `docs/api/training-api-spec.md`
@@ -257,203 +257,203 @@ Branch: feature/local-seed-data
 - `docs/modules/focus-training.md`
 - `docs/modules/document-training.md`
 
-작업:
+?묒뾽:
 
-- social scenario seed 데이터 작성
-- safety scenario/scene/choice seed 데이터 작성
-- focus level rule seed 데이터 작성
-- document question seed 데이터 작성
-- 테스트용 fixture와 local seed의 책임 분리
+- social scenario seed ?곗씠???묒꽦
+- safety scenario/scene/choice seed ?곗씠???묒꽦
+- focus level rule seed ?곗씠???묒꽦
+- document question seed ?곗씠???묒꽦
+- ?뚯뒪?몄슜 fixture? local seed??梨낆엫 遺꾨━
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 로컬 환경에서 각 훈련 시작 API가 최소 1개 이상의 활성 콘텐츠로 동작할 수 있다.
-- seed 데이터는 Training Service 소유 콘텐츠 테이블만 대상으로 한다.
-- user progress, session, score, feedback 같은 사용자 수행 결과는 seed로 만들지 않는다.
+- 濡쒖뺄 ?섍꼍?먯꽌 媛??덈젴 ?쒖옉 API媛 理쒖냼 1媛??댁긽???쒖꽦 肄섑뀗痢좊줈 ?숈옉?????덈떎.
+- seed ?곗씠?곕뒗 Training Service ?뚯쑀 肄섑뀗痢??뚯씠釉붾쭔 ??곸쑝濡??쒕떎.
+- user progress, session, score, feedback 媛숈? ?ъ슜???섑뻾 寃곌낵??seed濡?留뚮뱾吏 ?딅뒗??
 
 ## 6. Phase 3 - Common Foundation
 
-### Task 3.1 공통 응답과 예외 처리
+### Task 3.1 怨듯넻 ?묐떟怨??덉쇅 泥섎━
 
 ```text
 Branch: feature/common-api-response
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/architecture/training-service-architecture.md`
 
-작업:
+?묒뾽:
 
-- 공통 응답 포맷 구현
-- 공통 오류 응답 구현
-- global exception handler 구현
-- validation error 응답 구현
+- 怨듯넻 ?묐떟 ?щ㎎ 援ы쁽
+- 怨듯넻 ?ㅻ쪟 ?묐떟 援ы쁽
+- global exception handler 援ы쁽
+- validation error ?묐떟 援ы쁽
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- API spec의 공통 응답/오류 구조와 일치한다.
-- validation 실패 테스트가 있다.
+- API spec??怨듯넻 ?묐떟/?ㅻ쪟 援ъ“? ?쇱튂?쒕떎.
+- validation ?ㅽ뙣 ?뚯뒪?멸? ?덈떎.
 
-### Task 3.2 Security context 구현
+### Task 3.2 Security context 援ы쁽
 
 ```text
 Branch: feature/security-context
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/security-context.md`
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
-- trusted header `X-User-Id` 기반 current user resolver 구현
-- 외부 API에서 request body/query `userId`를 사용하지 않도록 controller contract 구성
-- 내부 API의 path `userId` 사용 경계 분리
+- trusted header `X-User-Id` 湲곕컲 current user resolver 援ы쁽
+- ?몃? API?먯꽌 request body/query `userId`瑜??ъ슜?섏? ?딅룄濡?controller contract 援ъ꽦
+- ?대? API??path `userId` ?ъ슜 寃쎄퀎 遺꾨━
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 외부 API는 current user context에서만 userId를 얻는다.
-- `X-User-Id` 누락/잘못된 값 테스트가 있다.
-- 로그인, 회원가입, 토큰 발급 로직이 없다.
+- ?몃? API??current user context?먯꽌留?userId瑜??삳뒗??
+- `X-User-Id` ?꾨씫/?섎せ??媛??뚯뒪?멸? ?덈떎.
+- 濡쒓렇?? ?뚯썝媛?? ?좏겙 諛쒓툒 濡쒖쭅???녿떎.
 
-### Task 3.3 Session ownership validator 구현
+### Task 3.3 Session ownership validator 援ы쁽
 
 ```text
 Branch: feature/session-ownership-validation
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/security-context.md`
 - `docs/api/training-api-spec.md`
 - `docs/database/training-db-spec.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
-- `sessionId`와 current `userId` 소유권 검증 공통 서비스 구현
-- 상세 조회, 다음 장면, 완료 처리에서 재사용 가능하게 구성
+- `sessionId`? current `userId` ?뚯쑀沅?寃利?怨듯넻 ?쒕퉬??援ы쁽
+- ?곸꽭 議고쉶, ?ㅼ쓬 ?λ㈃, ?꾨즺 泥섎━?먯꽌 ?ъ궗??媛?ν븯寃?援ъ꽦
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 다른 사용자의 session 접근은 실패한다.
-- not found와 forbidden 정책이 테스트로 고정된다.
+- ?ㅻⅨ ?ъ슜?먯쓽 session ?묎렐? ?ㅽ뙣?쒕떎.
+- not found? forbidden ?뺤콉???뚯뒪?몃줈 怨좎젙?쒕떎.
 
 ## 7. Phase 4 - Session and Query Core
 
-### Task 4.1 Training session core 구현
+### Task 4.1 Training session core 援ы쁽
 
 ```text
 Branch: feature/training-session-core
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/training-db-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/architecture/training-service-architecture.md`
 
-작업:
+?묒뾽:
 
-- `TrainingSession` entity/repository/service 구현
-- training type, status, current step, started/ended time 처리
-- session 생성 공통 로직 구현
+- `TrainingSession` entity/repository/service 援ы쁽
+- training type, status, current step, started/ended time 泥섎━
+- session ?앹꽦 怨듯넻 濡쒖쭅 援ы쁽
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- SOCIAL, SAFETY, FOCUS, DOCUMENT 공통 세션 생성에 재사용 가능하다.
-- status 전이 테스트가 있다.
+- SOCIAL, SAFETY, FOCUS, DOCUMENT 怨듯넻 ?몄뀡 ?앹꽦???ъ궗??媛?ν븯??
+- status ?꾩씠 ?뚯뒪?멸? ?덈떎.
 
-### Task 4.2 Progress summary API 구현
+### Task 4.2 Progress summary API 援ы쁽
 
 ```text
 Branch: feature/training-progress-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/database/training-db-spec.md`
 - `docs/architecture/security-context.md`
 
-작업:
+?묒뾽:
 
 - `GET /api/trainings/progress?type={trainingType}`
-- social/safety/document/focus progress 조회
+- social/safety/document/focus progress 議고쉶
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- current user 기준으로만 조회한다.
-- 데이터 없음 기본 응답 정책이 테스트로 고정된다.
+- current user 湲곗??쇰줈留?議고쉶?쒕떎.
+- ?곗씠???놁쓬 湲곕낯 ?묐떟 ?뺤콉???뚯뒪?몃줈 怨좎젙?쒕떎.
 
-### Task 4.3 Training session list API 구현
+### Task 4.3 Training session list API 援ы쁽
 
 ```text
 Branch: feature/training-session-list-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/database/db-spec.md`
 - `docs/database/training-db-spec.md`
 
-작업:
+?묒뾽:
 
 - `GET /api/trainings/sessions`
-- `training_session_summaries`만 조회
-- SAFETY category 필터
-- `completed_at DESC` 정렬
-- paging 처리
+- `training_session_summaries`留?議고쉶
+- SAFETY category ?꾪꽣
+- `completed_at DESC` ?뺣젹
+- paging 泥섎━
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 목록 API에서 원본 로그, score, feedback 테이블을 조회하지 않는다.
-- SOCIAL, SAFETY, DOCUMENT, FOCUS 응답 테스트가 있다.
+- 紐⑸줉 API?먯꽌 ?먮낯 濡쒓렇, score, feedback ?뚯씠釉붿쓣 議고쉶?섏? ?딅뒗??
+- SOCIAL, SAFETY, DOCUMENT, FOCUS ?묐떟 ?뚯뒪?멸? ?덈떎.
 
-### Task 4.4 Internal training query API 구현
+### Task 4.4 Internal training query API 援ы쁽
 
 ```text
 Branch: feature/internal-training-query-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/architecture/security-context.md`
 - `docs/database/training-db-spec.md`
 
-작업:
+?묒뾽:
 
 - `GET /internal/trainings/users/{userId}/summary`
 - `GET /internal/trainings/users/{userId}/latest-results`
-- 내부 API 호출자 경계와 외부 API 노출 방지 설정
+- ?대? API ?몄텧??寃쎄퀎? ?몃? API ?몄텧 諛⑹? ?ㅼ젙
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- summary API는 progress 테이블만 조회한다.
-- latest-results API는 completed session, score, feedback 기준으로 응답한다.
-- 외부 `/api/trainings/**` API와 달리 내부 API에서만 path `userId`를 허용한다.
-- Report Service DB에는 직접 접근하지 않는다.
+- summary API??progress ?뚯씠釉붾쭔 議고쉶?쒕떎.
+- latest-results API??completed session, score, feedback 湲곗??쇰줈 ?묐떟?쒕떎.
+- ?몃? `/api/trainings/**` API? ?щ━ ?대? API?먯꽌留?path `userId`瑜??덉슜?쒕떎.
+- Report Service DB?먮뒗 吏곸젒 ?묎렐?섏? ?딅뒗??
 
 ## 8. Phase 5 - Training Modules
 
-### Task 5.1 Social training API 구현
+### Task 5.1 Social training API 援ы쁽
 
 ```text
 Branch: feature/social-training-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
@@ -461,26 +461,26 @@ Branch: feature/social-training-api
 - `docs/modules/social-training.md`
 - `docs/architecture/sequence-diagrams.md`
 
-작업:
+?묒뾽:
 
-- job type 선택 API
-- social scenario 목록/상세 조회
-- social session 시작
-- social detail 조회
+- job type ?좏깮 API
+- social scenario 紐⑸줉/?곸꽭 議고쉶
+- social session ?쒖옉
+- social detail 議고쉶
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- `training_sessions.sub_type = jobType` 저장 기준을 따른다.
-- scenario 조회는 active content 기준으로 동작한다.
-- detail 조회는 session ownership을 검증한다.
+- `training_sessions.sub_type = jobType` ???湲곗????곕Ⅸ??
+- scenario 議고쉶??active content 湲곗??쇰줈 ?숈옉?쒕떎.
+- detail 議고쉶??session ownership??寃利앺븳??
 
-### Task 5.2 Safety training API 구현
+### Task 5.2 Safety training API 援ы쁽
 
 ```text
 Branch: feature/safety-training-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
@@ -488,26 +488,26 @@ Branch: feature/safety-training-api
 - `docs/modules/safety-training.md`
 - `docs/architecture/sequence-diagrams.md`
 
-작업:
+?묒뾽:
 
-- safety scenario 목록 조회
-- safety session 시작 및 첫 장면 조회
-- next scene 처리
-- safety detail 조회
+- safety scenario 紐⑸줉 議고쉶
+- safety session ?쒖옉 諛?泥??λ㈃ 議고쉶
+- next scene 泥섎━
+- safety detail 議고쉶
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 선택 이력 저장과 current step 갱신이 동작한다.
-- session ownership 검증 테스트가 있다.
-- category 필터가 동작한다.
+- ?좏깮 ?대젰 ??κ낵 current step 媛깆떊???숈옉?쒕떎.
+- session ownership 寃利??뚯뒪?멸? ?덈떎.
+- category ?꾪꽣媛 ?숈옉?쒕떎.
 
-### Task 5.3 Focus training API 구현
+### Task 5.3 Focus training API 援ы쁽
 
 ```text
 Branch: feature/focus-training-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
@@ -515,27 +515,27 @@ Branch: feature/focus-training-api
 - `docs/modules/focus-training.md`
 - `docs/architecture/sequence-diagrams.md`
 
-작업:
+?묒뾽:
 
-- focus progress 조회
-- focus session 시작
-- `POST /api/trainings/focus/sessions` 안에서 focus commands 생성 후 응답으로 반환
-- focus reaction logs는 완료 API에서 일괄 제출되도록 DTO/검증 기준 준비
+- focus progress 議고쉶
+- focus session ?쒖옉
+- `POST /api/trainings/focus/sessions` ?덉뿉??focus commands ?앹꽦 ???묐떟?쇰줈 諛섑솚
+- focus reaction logs???꾨즺 API?먯꽌 ?쇨큵 ?쒖텧?섎룄濡?DTO/寃利?湲곗? 以鍮?
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- level은 `training_sessions.sub_type`에 저장한다.
-- focus detail API는 만들지 않는다.
-- 별도 focus command 조회 API를 만들지 않는다.
-- command/reaction 기본 제약 테스트가 있다.
+- level? `training_sessions.sub_type`????ν븳??
+- focus detail API??留뚮뱾吏 ?딅뒗??
+- 蹂꾨룄 focus command 議고쉶 API瑜?留뚮뱾吏 ?딅뒗??
+- command/reaction 湲곕낯 ?쒖빟 ?뚯뒪?멸? ?덈떎.
 
-### Task 5.4 Document training API 구현
+### Task 5.4 Document training API 援ы쁽
 
 ```text
 Branch: feature/document-training-api
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
@@ -543,56 +543,56 @@ Branch: feature/document-training-api
 - `docs/modules/document-training.md`
 - `docs/architecture/sequence-diagrams.md`
 
-작업:
+?묒뾽:
 
-- document session 시작
-- question 제공
-- `POST /api/trainings/document/sessions/{sessionId}/answers` 요청/응답 DTO와 검증 기준 준비
-- document detail 조회
+- document session ?쒖옉
+- question ?쒓났
+- `POST /api/trainings/document/sessions/{sessionId}/answers` ?붿껌/?묐떟 DTO? 寃利?湲곗? 以鍮?
+- document detail 議고쉶
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- question별 중복 답변 정책이 테스트로 고정된다.
-- detail 조회는 session ownership을 검증한다.
-- 실제 답변 저장, 채점, 완료 처리는 Module completion task에서 구현한다.
-- document detail API는 완료 데이터가 필요한 조회이므로 Phase 7 completion flow 이후 최종 응답 검증을 완료한다.
+- question蹂?以묐났 ?듬? ?뺤콉???뚯뒪?몃줈 怨좎젙?쒕떎.
+- detail 議고쉶??session ownership??寃利앺븳??
+- ?ㅼ젣 ?듬? ??? 梨꾩젏, ?꾨즺 泥섎━??Module completion task?먯꽌 援ы쁽?쒕떎.
+- document detail API???꾨즺 ?곗씠?곌? ?꾩슂??議고쉶?대?濡?Phase 7 completion flow ?댄썑 理쒖쥌 ?묐떟 寃利앹쓣 ?꾨즺?쒕떎.
 
 ## 9. Phase 6 - OpenAI Evaluation Boundary
 
-### Task 6.1 OpenAI adapter boundary 구현
+### Task 6.1 OpenAI adapter boundary 援ы쁽
 
 ```text
 Branch: feature/openai-adapter
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/openai-integration.md`
 - `docs/architecture/training-service-architecture.md`
 - `docs/api/training-api-spec.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
 - OpenAI adapter interface
 - local fake adapter
-- timeout 설정
-- 요청/응답 DTO
-- evaluation result를 score/feedback 저장 모델로 변환하는 내부 DTO
+- timeout ?ㅼ젙
+- ?붿껌/?묐떟 DTO
+- evaluation result瑜?score/feedback ???紐⑤뜽濡?蹂?섑븯???대? DTO
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 테스트에서 실제 OpenAI API를 호출하지 않는다.
-- OpenAI 원문 응답을 외부 API로 그대로 노출하지 않는다.
-- completion flow는 adapter interface만 의존할 수 있다.
+- ?뚯뒪?몄뿉???ㅼ젣 OpenAI API瑜??몄텧?섏? ?딅뒗??
+- OpenAI ?먮Ц ?묐떟???몃? API濡?洹몃?濡??몄텧?섏? ?딅뒗??
+- completion flow??adapter interface留??섏〈?????덈떎.
 
-### Task 6.2 AI evaluation integration 구현
+### Task 6.2 AI evaluation integration 援ы쁽
 
 ```text
 Branch: feature/openai-training-evaluation
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/openai-integration.md`
 - `docs/api/training-api-spec.md`
@@ -602,31 +602,31 @@ Branch: feature/openai-training-evaluation
 - `docs/modules/focus-training.md`
 - `docs/modules/document-training.md`
 
-작업:
+?묒뾽:
 
-- social dialogue evaluation은 OpenAI adapter를 사용한다.
-- safety, focus, document는 deterministic scoring을 기본으로 하고, adaptive feedback이 필요한 경우에만 OpenAI adapter를 사용한다.
+- social dialogue evaluation? OpenAI adapter瑜??ъ슜?쒕떎.
+- safety, focus, document??deterministic scoring??湲곕낯?쇰줈 ?섍퀬, adaptive feedback???꾩슂??寃쎌슦?먮쭔 OpenAI adapter瑜??ъ슜?쒕떎.
 - training score generation
 - feedback generation
-- raw metrics 저장
-- timeout/retry/fallback 정책 구현
+- raw metrics ???
+- timeout/retry/fallback ?뺤콉 援ы쁽
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 실패/timeout/fallback 정책이 테스트로 고정된다.
-- 개인정보와 불필요한 user profile을 OpenAI 요청에 포함하지 않는다.
-- fallback을 사용한 경우 feedback_source 또는 raw_metrics_json에 근거를 남긴다.
-- 모듈별 AI 사용 여부가 테스트 double 또는 설정으로 분리되어 테스트에서 실제 OpenAI API를 호출하지 않는다.
+- ?ㅽ뙣/timeout/fallback ?뺤콉???뚯뒪?몃줈 怨좎젙?쒕떎.
+- 媛쒖씤?뺣낫? 遺덊븘?뷀븳 user profile??OpenAI ?붿껌???ы븿?섏? ?딅뒗??
+- fallback???ъ슜??寃쎌슦 feedback_source ?먮뒗 raw_metrics_json??洹쇨굅瑜??④릿??
+- 紐⑤뱢蹂?AI ?ъ슜 ?щ?媛 ?뚯뒪??double ?먮뒗 ?ㅼ젙?쇰줈 遺꾨━?섏뼱 ?뚯뒪?몄뿉???ㅼ젣 OpenAI API瑜??몄텧?섏? ?딅뒗??
 
 ## 10. Phase 7 - Completion Flow
 
-### Task 7.1 Completion transaction core 구현
+### Task 7.1 Completion transaction core 援ы쁽
 
 ```text
 Branch: feature/training-completion-core
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/event-outbox.md`
 - `docs/architecture/openai-integration.md`
@@ -634,32 +634,32 @@ Branch: feature/training-completion-core
 - `docs/database/training-db-spec.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
-- 완료 처리 공통 트랜잭션 구성
-- 원본 로그/결과 저장
-- score 저장
-- feedback 저장
-- progress 갱신
-- summary 생성
-- session completed 처리
-- 같은 트랜잭션 안에서 outbox event 저장
+- ?꾨즺 泥섎━ 怨듯넻 ?몃옖??뀡 援ъ꽦
+- ?먮낯 濡쒓렇/寃곌낵 ???
+- score ???
+- feedback ???
+- progress 媛깆떊
+- summary ?앹꽦
+- session completed 泥섎━
+- 媛숈? ?몃옖??뀡 ?덉뿉??outbox event ???
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 완료 처리 순서가 event-outbox 문서와 일치한다.
-- 완료 데이터와 outbox event가 같은 트랜잭션에서 저장된다.
-- 중간 실패 시 트랜잭션 rollback 테스트가 있다.
-- duplicate completion 테스트가 있다.
-- 이미 완료된 세션은 score, feedback, summary, event를 중복 생성하지 않는다.
+- ?꾨즺 泥섎━ ?쒖꽌媛 event-outbox 臾몄꽌? ?쇱튂?쒕떎.
+- ?꾨즺 ?곗씠?곗? outbox event媛 媛숈? ?몃옖??뀡?먯꽌 ??λ맂??
+- 以묎컙 ?ㅽ뙣 ???몃옖??뀡 rollback ?뚯뒪?멸? ?덈떎.
+- duplicate completion ?뚯뒪?멸? ?덈떎.
+- ?대? ?꾨즺???몄뀡? score, feedback, summary, event瑜?以묐났 ?앹꽦?섏? ?딅뒗??
 
-### Task 7.2 Module completion 구현
+### Task 7.2 Module completion 援ы쁽
 
 ```text
 Branch: feature/training-module-completion
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
@@ -667,46 +667,46 @@ Branch: feature/training-module-completion
 - `docs/architecture/event-outbox.md`
 - `docs/architecture/sequence-diagrams.md`
 
-작업:
+?묒뾽:
 
 - social complete
 - safety complete
 - focus complete
 - document answers submit and complete
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 각 완료 API가 score, feedback, progress, summary, outbox event를 생성한다.
-- 이미 완료된 세션에 대한 중복 요청 정책이 테스트로 고정된다.
+- 媛??꾨즺 API媛 score, feedback, progress, summary, outbox event瑜??앹꽦?쒕떎.
+- ?대? ?꾨즺???몄뀡?????以묐났 ?붿껌 ?뺤콉???뚯뒪?몃줈 怨좎젙?쒕떎.
 
 ## 11. Phase 8 - Event Outbox Publisher
 
-### Task 8.1 Event publisher 구현
+### Task 8.1 Event publisher 援ы쁽
 
 ```text
 Branch: feature/training-completed-publisher
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/event-outbox.md`
 - `docs/api/training-api-spec.md`
 - `docs/database/training-db-spec.md`
 - `docs/architecture/overall-architecture.md`
 
-작업:
+?묒뾽:
 
 - outbox publisher
-- publish success 상태 변경
-- retry 대상 상태 유지
-- DLQ 전환 기준 구현 준비
+- publish success ?곹깭 蹂寃?
+- retry ????곹깭 ?좎?
+- DLQ ?꾪솚 湲곗? 援ы쁽 以鍮?
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- completion flow가 저장한 outbox event를 발행 대상으로 조회한다.
-- publish 성공/실패 테스트가 있다.
-- eventId가 payload에 포함된다.
-- Report Service DB에 직접 접근하지 않는다.
+- completion flow媛 ??ν븳 outbox event瑜?諛쒗뻾 ??곸쑝濡?議고쉶?쒕떎.
+- publish ?깃났/?ㅽ뙣 ?뚯뒪?멸? ?덈떎.
+- eventId媛 payload???ы븿?쒕떎.
+- Report Service DB??吏곸젒 ?묎렐?섏? ?딅뒗??
 
 ## 12. Phase 9 - Infra Hardening
 
@@ -716,21 +716,21 @@ Branch: feature/training-completed-publisher
 Branch: feature/health-check
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/development/local-development.md`
 - `docs/architecture/training-service-architecture.md`
 
-작업:
+?묒뾽:
 
-- actuator health 설정
-- DB health 확인
-- local docker healthcheck와 연결
+- actuator health ?ㅼ젙
+- DB health ?뺤씤
+- local docker healthcheck? ?곌껐
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- `/actuator/health`가 DB 상태를 포함한다.
-- docker compose 환경에서 healthcheck가 통과한다.
+- `/actuator/health`媛 DB ?곹깭瑜??ы븿?쒕떎.
+- docker compose ?섍꼍?먯꽌 healthcheck媛 ?듦낵?쒕떎.
 
 ### Task 9.2 Logging and tracing baseline
 
@@ -738,24 +738,24 @@ Branch: feature/health-check
 Branch: feature/logging-tracing-baseline
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/overall-architecture.md`
 - `docs/architecture/security-context.md`
 - `docs/architecture/openai-integration.md`
 - `docs/architecture/event-outbox.md`
 
-작업:
+?묒뾽:
 
-- request logging 기준 설정
-- error logging 기준 설정
-- event publish log 기준 설정
-- trace id 또는 correlation id 수용 준비
+- request logging 湲곗? ?ㅼ젙
+- error logging 湲곗? ?ㅼ젙
+- event publish log 湲곗? ?ㅼ젙
+- trace id ?먮뒗 correlation id ?섏슜 以鍮?
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- 민감 정보와 OpenAI API key를 로그에 남기지 않는다.
-- sessionId/userId 기반 운영 추적이 가능하다.
+- 誘쇨컧 ?뺣낫? OpenAI API key瑜?濡쒓렇???④린吏 ?딅뒗??
+- sessionId/userId 湲곕컲 ?댁쁺 異붿쟻??媛?ν븯??
 
 ### Task 9.3 Swagger UI and OpenAPI documentation
 
@@ -795,23 +795,23 @@ Completion criteria:
 Branch: test/integration-baseline
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/database/training-db-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/architecture/event-outbox.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
-- Phase 2의 Testcontainers MySQL 기반 재사용
+- Phase 2??Testcontainers MySQL 湲곕컲 ?ъ궗??
 - repository integration test
-- 주요 service transaction integration test
+- 二쇱슂 service transaction integration test
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- CI 또는 로컬 verify에서 MySQL 기반 repository/service 테스트가 통과한다.
-- migration 검증은 Phase 2 baseline과 중복 구현하지 않는다.
+- CI ?먮뒗 濡쒖뺄 verify?먯꽌 MySQL 湲곕컲 repository/service ?뚯뒪?멸? ?듦낵?쒕떎.
+- migration 寃利앹? Phase 2 baseline怨?以묐났 援ы쁽?섏? ?딅뒗??
 
 ### Task 10.2 API contract tests
 
@@ -819,24 +819,24 @@ Branch: test/integration-baseline
 Branch: test/api-contract
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/api/api-spec.md`
 - `docs/api/training-api-spec.md`
 - `docs/architecture/security-context.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
 - progress API contract test
 - session list API contract test
 - detail API contract test
 - completion API contract test
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- API spec의 request/response와 테스트가 일치한다.
-- userId body/query 사용이 없음을 테스트한다.
+- API spec??request/response? ?뚯뒪?멸? ?쇱튂?쒕떎.
+- userId body/query ?ъ슜???놁쓬???뚯뒪?명븳??
 
 ### Task 10.3 Boundary and regression tests
 
@@ -844,7 +844,7 @@ Branch: test/api-contract
 Branch: test/boundary-regression
 ```
 
-참고 문서:
+李멸퀬 臾몄꽌:
 
 - `docs/architecture/security-context.md`
 - `docs/architecture/openai-integration.md`
@@ -852,7 +852,7 @@ Branch: test/boundary-regression
 - `docs/api/training-api-spec.md`
 - `AGENTS.md`
 
-작업:
+?묒뾽:
 
 - session ownership regression test
 - duplicate completion regression test
@@ -860,16 +860,16 @@ Branch: test/boundary-regression
 - OpenAI failure boundary test
 - outbox retry boundary test
 
-완료 기준:
+?꾨즺 湲곗?:
 
-- AGENTS.md Testing Guidelines의 핵심 항목을 모두 커버한다.
+- AGENTS.md Testing Guidelines???듭떖 ??ぉ??紐⑤몢 而ㅻ쾭?쒕떎.
 
 ## 14. Implementation Order
 
-권장 구현 순서는 다음과 같다.
+沅뚯옣 援ы쁽 ?쒖꽌???ㅼ쓬怨?媛숇떎.
 
 ```text
-0. Documentation gaps 정리
+0. Documentation gaps ?뺣━
 1. Phase 0 - Project Scaffold
 2. Phase 1 - Local Infrastructure
 3. Phase 2 - Database Migration, migration test baseline, seed data
@@ -883,4 +883,4 @@ Branch: test/boundary-regression
 11. Phase 10 - Test and Quality Gate
 ```
 
-Phase 6 이후부터는 OpenAI integration, completion flow, event outbox가 서로 영향을 주므로 API/DB 문서와 테스트를 함께 확인한다.
+Phase 6 ?댄썑遺?곕뒗 OpenAI integration, completion flow, event outbox媛 ?쒕줈 ?곹뼢??二쇰?濡?API/DB 臾몄꽌? ?뚯뒪?몃? ?④퍡 ?뺤씤?쒕떎.

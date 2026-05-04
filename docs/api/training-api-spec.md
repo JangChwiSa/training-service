@@ -74,7 +74,6 @@ training_db
 - training_scores
 - training_feedbacks
 
-report_db
 - report_summary
 - report_snapshots
 ```
@@ -1472,5 +1471,5 @@ Report Service는 이벤트 수신 후 report_summary를 갱신한다.
 - eventId 기준으로 멱등 처리한다.
 - 이벤트 발행은 Outbox Pattern을 사용한다.
 - 소비 실패 시 Retry 후 DLQ로 이동한다.
-- 리포트 조회 시 report_db가 비어 있거나 최신 결과와 불일치하면 Training Service 최신 결과 재조회 API로 복구한다.
 ```
+
