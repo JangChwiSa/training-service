@@ -77,7 +77,7 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
     @Override
     public Optional<SafetySceneResponse> findScene(long sceneId) {
         String sql = """
-                SELECT scene_id, screen_info, situation_text, question_text, is_end_scene
+                SELECT scene_id, screen_info, situation_text, question_text, image_url, image_alt, is_end_scene
                 FROM safety_scenes
                 WHERE scene_id = ?
                 """;
@@ -86,6 +86,8 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
                 resultSet.getString("screen_info"),
                 resultSet.getString("situation_text"),
                 resultSet.getString("question_text"),
+                resultSet.getString("image_url"),
+                resultSet.getString("image_alt"),
                 findChoices(resultSet.getLong("scene_id")),
                 resultSet.getBoolean("is_end_scene")
         ), sceneId);
@@ -109,7 +111,7 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
     @Override
     public Optional<SafetyChoiceRow> findChoice(long sceneId, long choiceId) {
         String sql = """
-                SELECT choice_id, scene_id, next_scene_id, is_correct, result_text, effect_text
+                SELECT choice_id, scene_id, next_scene_id, is_correct, result_text, effect_text, feedback_image_url, feedback_image_alt
                 FROM safety_choices
                 WHERE scene_id = ?
                   AND choice_id = ?
@@ -120,7 +122,9 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
                 nullableLong(resultSet.getObject("next_scene_id")),
                 resultSet.getBoolean("is_correct"),
                 resultSet.getString("result_text"),
-                resultSet.getString("effect_text")
+                resultSet.getString("effect_text"),
+                resultSet.getString("feedback_image_url"),
+                resultSet.getString("feedback_image_alt")
         ), sceneId, choiceId);
         return choices.stream().findFirst();
     }

@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -90,6 +91,8 @@ class SafetyTrainingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.sessionId").value(1))
                 .andExpect(jsonPath("$.data.scene.sceneId").value(10))
+                .andExpect(jsonPath("$.data.scene.imageUrl").value("/scene.png"))
+                .andExpect(jsonPath("$.data.scene.imageAlt").value("Scene alt"))
                 .andExpect(jsonPath("$.data.scene.choices[0].choiceId").value(2))
                 .andExpect(jsonPath("$.data.scene.endScene").value(false));
 
@@ -113,7 +116,9 @@ class SafetyTrainingControllerTest {
                 3L,
                 true,
                 "Good choice",
-                "Move safely"
+                "Move safely",
+                "/feedback.png",
+                "Feedback alt"
         ));
         safetyRepository.scenes.put(3L, scene(3L, false));
 
@@ -122,10 +127,45 @@ class SafetyTrainingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"sceneId\":1,\"choiceId\":2}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.selectedResult.correct").value(true))
-                .andExpect(jsonPath("$.data.selectedResult.resultText").value("Good choice"))
-                .andExpect(jsonPath("$.data.selectedResult.effectText").value("Move safely"))
-                .andExpect(jsonPath("$.data.nextScene.sceneId").value(3));
+                .andExpect(jsonPath("$.data.completed").value(false))
+                .andExpect(jsonPath("$.data.nextScene.sceneId").value(3))
+                .andExpect(jsonPath("$.data.result").value(Matchers.nullValue()));
+    }
+
+    @Test
+    void returnsResultWhenAdvancingToEndScene() throws Exception {
+        ownershipRepository.save(20L, 1L);
+        sessionRepository.sessions.put(20L, TrainingSession.start(
+                1L,
+                TrainingType.SAFETY,
+                null,
+                1L,
+                LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(20L));
+        safetyRepository.choices.put("1:2", new SafetyTrainingRepository.SafetyChoiceRow(
+                2L,
+                1L,
+                3L,
+                true,
+                "Good choice",
+                "Move safely",
+                "/feedback.png",
+                "Feedback alt"
+        ));
+        safetyRepository.scenes.put(3L, scene(3L, true));
+
+        mockMvc.perform(post("/api/trainings/safety/sessions/20/next-scene")
+                        .header("X-User-Id", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sceneId\":1,\"choiceId\":2}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.completed").value(true))
+                .andExpect(jsonPath("$.data.nextScene").value(Matchers.nullValue()))
+                .andExpect(jsonPath("$.data.result.correct").value(true))
+                .andExpect(jsonPath("$.data.result.resultText").value("Good choice"))
+                .andExpect(jsonPath("$.data.result.effectText").value("Move safely"))
+                .andExpect(jsonPath("$.data.result.feedbackImageUrl").value("/feedback.png"))
+                .andExpect(jsonPath("$.data.result.feedbackImageAlt").value("Feedback alt"));
     }
 
     @Test
@@ -195,6 +235,8 @@ class SafetyTrainingControllerTest {
                 "screen",
                 "situation",
                 "question",
+                "/scene.png",
+                "Scene alt",
                 List.of(new SafetyChoiceResponse(2L, "Report it to the manager.")),
                 endScene
         );

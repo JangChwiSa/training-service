@@ -48,9 +48,22 @@ public interface SafetyTrainingRepository {
         throw new UnsupportedOperationException("findActionDetails is not implemented.");
     }
 
-    record SafetyChoiceRow(long choiceId, long sceneId, Long nextSceneId, boolean correct, String resultText, String effectText) {
+    record SafetyChoiceRow(
+            long choiceId,
+            long sceneId,
+            Long nextSceneId,
+            boolean correct,
+            String resultText,
+            String effectText,
+            String feedbackImageUrl,
+            String feedbackImageAlt
+    ) {
         public SafetyChoiceRow(long choiceId, long sceneId, Long nextSceneId, boolean correct) {
-            this(choiceId, sceneId, nextSceneId, correct, null, null);
+            this(choiceId, sceneId, nextSceneId, correct, null, null, null, null);
+        }
+
+        public SafetyChoiceRow(long choiceId, long sceneId, Long nextSceneId, boolean correct, String resultText, String effectText) {
+            this(choiceId, sceneId, nextSceneId, correct, resultText, effectText, null, null);
         }
     }
 

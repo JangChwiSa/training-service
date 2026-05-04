@@ -94,12 +94,45 @@ class SafetyTrainingServiceTest {
 
         NextSafetySceneResponse response = service.nextScene(new CurrentUser(1L), 20L, 1L, 2L);
 
-        assertThat(response.selectedResult().correct()).isTrue();
-        assertThat(response.selectedResult().resultText()).isEqualTo("Good choice");
-        assertThat(response.selectedResult().effectText()).isEqualTo("Move safely");
+        assertThat(response.completed()).isFalse();
+        assertThat(response.result()).isNull();
         assertThat(response.nextScene().sceneId()).isEqualTo(3L);
         assertThat(safetyRepository.savedActionLogs).containsExactly(new SafetyActionLogResponse(1L, 2L, true));
         assertThat(sessionRepository.sessions.get(20L).currentStep()).isEqualTo(3);
+    }
+
+    @Test
+    void returnsCompletionResultWhenNextSceneIsEndScene() {
+        ownershipRepository.save(20L, 1L);
+        sessionRepository.sessions.put(20L, TrainingSession.start(
+                1L,
+                TrainingType.SAFETY,
+                null,
+                1L,
+                java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(20L));
+        safetyRepository.choices.put("1:2", new SafetyTrainingRepository.SafetyChoiceRow(
+                2L,
+                1L,
+                3L,
+                true,
+                "Good choice",
+                "Move safely",
+                "/feedback.png",
+                "Feedback alt"
+        ));
+        safetyRepository.scenes.put(3L, scene(3L, true));
+
+        NextSafetySceneResponse response = service.nextScene(new CurrentUser(1L), 20L, 1L, 2L);
+
+        assertThat(response.completed()).isTrue();
+        assertThat(response.nextScene()).isNull();
+        assertThat(response.result()).isNotNull();
+        assertThat(response.result().correct()).isTrue();
+        assertThat(response.result().resultText()).isEqualTo("Good choice");
+        assertThat(response.result().effectText()).isEqualTo("Move safely");
+        assertThat(response.result().feedbackImageUrl()).isEqualTo("/feedback.png");
+        assertThat(response.result().feedbackImageAlt()).isEqualTo("Feedback alt");
     }
 
     @Test
@@ -135,6 +168,8 @@ class SafetyTrainingServiceTest {
                 "screen",
                 "situation",
                 "question",
+                "/scene.png",
+                "Scene alt",
                 List.of(new SafetyChoiceResponse(2L, "Report it to the manager.")),
                 endScene
         );
