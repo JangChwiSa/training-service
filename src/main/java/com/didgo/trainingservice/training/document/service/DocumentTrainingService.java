@@ -195,15 +195,15 @@ public class DocumentTrainingService {
                 new TrainingCompletionFeedback(
                         "SUMMARY",
                         "SYSTEM",
-                        "臾몄꽌 ?댄빐 ?덈젴???꾨즺?덉뒿?덈떎.",
-                        "?쒖텧???듬????뺣떟瑜좎쓣 湲곗??쇰줈 ?먯닔瑜?怨꾩궛?덉뒿?덈떎."
+                        "문서 이해 훈련을 완료했습니다.",
+                        "제출한 답변의 정답률을 기준으로 점수를 계산했습니다."
                 ),
                 new TrainingCompletionSummary(
                         null,
                         null,
                         null,
-                        "臾몄꽌 ?댄빐 ?덈젴",
-                        "臾몄꽌 ?댄빐 ?덈젴 ?꾨즺",
+                        "문서 이해 훈련",
+                        "문서 이해 훈련 완료",
                         correctCount,
                         totalCount,
                         accuracyRate,
