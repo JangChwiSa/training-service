@@ -135,8 +135,8 @@ public class SocialTrainingService {
                 Map.of("dialogLogCount", request.dialogLogs().size()),
                 0,
                 "AI_EVALUATION",
-                "?ы쉶???덈젴???꾨즺?덉뒿?덈떎.",
-                "?ы쉶???덈젴 ???濡쒓렇媛 ??λ릺?덉뒿?덈떎.",
+                "사회성 훈련 평가를 완료하지 못했습니다.",
+                "일시적인 평가 오류로 점수를 산정하지 못했습니다. 대화 기록은 저장되었습니다.",
                 true
         ));
 
@@ -165,7 +165,7 @@ public class SocialTrainingService {
                         scenario.title(),
                         null,
                         scenario.title(),
-                        "?ы쉶???덈젴 ?꾨즺",
+                        "사회성 훈련 완료",
                         null,
                         null,
                         null,

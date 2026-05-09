@@ -80,7 +80,8 @@ class SocialVoiceSessionWebSocketHandlerTest {
                             .contains("복사 수량이 모호한 지시를 받은 상황")
                             .contains("안녕하세요. 같이 연습해볼게요.")
                             .contains("Speak only in Korean")
-                            .contains("Do not act like a coach");
+                            .contains("Do not act like a coach")
+                            .contains("If the user refuses");
                 })
                 .anySatisfy(event -> {
                     JsonNode json = read(event);
@@ -202,7 +203,7 @@ class SocialVoiceSessionWebSocketHandlerTest {
     }
 
     @Test
-    void acceptsResponseRequestImmediatelyAfterAudioCommit() throws Exception {
+    void queuesResponseRequestUntilUpstreamAudioCommitCompletes() throws Exception {
         List<String> browserMessages = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(SocialVoiceSessionHandshakeInterceptor.TOKEN_ATTRIBUTE, new SocialVoiceSessionToken(
@@ -225,7 +226,42 @@ class SocialVoiceSessionWebSocketHandlerTest {
         handler.handleMessage(session, new TextMessage("{\"type\":\"response.request\",\"sessionId\":10}"));
 
         assertThat(upstreamFactory.client.sentEvents)
+                .noneSatisfy(event -> assertThat(read(event).path("type").asText()).isEqualTo("response.create"));
+
+        upstreamFactory.eventHandler.onEvent("""
+                {"type":"input_audio_buffer.committed"}
+                """);
+
+        assertThat(upstreamFactory.client.sentEvents)
                 .anySatisfy(event -> assertThat(read(event).path("type").asText()).isEqualTo("response.create"));
+    }
+
+    @Test
+    void reportsProviderClosedAsErrorBeforeResponseCompletes() throws Exception {
+        List<String> browserMessages = new ArrayList<>();
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put(SocialVoiceSessionHandshakeInterceptor.TOKEN_ATTRIBUTE, new SocialVoiceSessionToken(
+                "token",
+                10L,
+                7L,
+                1L,
+                "복사 수량이 모호한 지시를 받은 상황",
+                "안녕하세요. 같이 연습해볼게요.",
+                "/static/opening/social/1/hash.pcm",
+                Instant.parse("2026-04-30T01:05:00Z")
+        ));
+        WebSocketSession session = webSocketSession(attributes, browserMessages);
+
+        handler.handleMessage(session, new TextMessage("{\"type\":\"session.start\",\"sessionId\":10}"));
+        upstreamFactory.eventHandler.onClose(1008, "invalid session");
+
+        assertThat(browserMessages)
+                .anySatisfy(message -> {
+                    JsonNode json = read(message);
+                    assertThat(json.path("type").asText()).isEqualTo("error");
+                    assertThat(json.path("code").asText()).isEqualTo("REALTIME_PROVIDER_CLOSED");
+                    assertThat(json.path("providerStatusCode").asInt()).isEqualTo(1008);
+                });
     }
 
     private WebSocketSession webSocketSession(Map<String, Object> attributes, List<String> messages) {

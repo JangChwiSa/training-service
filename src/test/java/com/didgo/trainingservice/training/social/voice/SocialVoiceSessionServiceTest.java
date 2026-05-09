@@ -3,6 +3,7 @@ package com.didgo.trainingservice.training.social.voice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.didgo.trainingservice.common.security.CurrentUser;
+import com.didgo.trainingservice.external.openai.OpenAiProperties;
 import com.didgo.trainingservice.training.session.entity.TrainingSession;
 import com.didgo.trainingservice.training.session.entity.TrainingType;
 import com.didgo.trainingservice.training.session.repository.TrainingSessionOwnershipRepository;
@@ -16,6 +17,11 @@ import com.didgo.trainingservice.training.social.entity.SocialJobType;
 import com.didgo.trainingservice.training.social.repository.SocialTrainingRepository;
 import com.didgo.trainingservice.training.social.voice.dto.SocialVoiceSessionPrepareResponse;
 import com.didgo.trainingservice.training.social.voice.realtime.OpenAiRealtimeProperties;
+import com.didgo.trainingservice.training.social.voice.tts.OpenAiSpeechClient;
+import com.didgo.trainingservice.training.social.voice.tts.OpenAiSpeechProperties;
+import com.didgo.trainingservice.training.social.voice.tts.SocialOpeningAudioAsset;
+import com.didgo.trainingservice.training.social.voice.tts.SocialOpeningAudioAssetRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -34,12 +40,17 @@ class SocialVoiceSessionServiceTest {
     FakeSocialTrainingRepository socialRepository = new FakeSocialTrainingRepository();
     Clock clock = Clock.fixed(Instant.parse("2026-04-30T01:00:00Z"), ZoneId.of("Asia/Seoul"));
     SocialVoiceSessionTokenService tokenService = new SocialVoiceSessionTokenService(clock);
+    FakeOpenAiSpeechClient speechClient = new FakeOpenAiSpeechClient();
+    FakeAudioAssetRepository audioAssetRepository = new FakeAudioAssetRepository();
     SocialVoiceSessionService service = new SocialVoiceSessionService(
             new TrainingSessionService(sessionRepository, clock),
             new SessionOwnershipValidator(ownershipRepository),
             socialRepository,
             tokenService,
-            new OpenAiRealtimeProperties(null, "gpt-realtime-mini", "marin", "audio/pcm", 24000, "audio/pcm")
+            new OpenAiRealtimeProperties(null, "gpt-realtime-mini", "marin", "audio/pcm", 24000, "audio/pcm"),
+            new OpenAiSpeechProperties(null, "gpt-4o-mini-tts", "marin", "mp3", null),
+            speechClient,
+            audioAssetRepository
     );
 
     @Test
@@ -62,8 +73,12 @@ class SocialVoiceSessionServiceTest {
         assertThat(response.realtime().connectionToken()).isNotBlank();
         assertThat(response.realtime().expiresInSeconds()).isEqualTo(300);
         assertThat(response.opening().script()).contains("A coworker looks upset.");
+        assertThat(response.opening().audioUrl()).startsWith("/api/trainings/social/opening-audio/");
+        assertThat(response.opening().audioAssetStatus()).isEqualTo("READY");
         assertThat(response.conversation().model()).isEqualTo("gpt-realtime-mini");
         assertThat(response.conversation().voice()).isEqualTo("marin");
+        assertThat(speechClient.lastInput).isEqualTo("A coworker looks upset.");
+        assertThat(audioAssetRepository.assets).hasSize(1);
     }
 
     static class FakeSocialTrainingRepository implements SocialTrainingRepository {
@@ -139,6 +154,44 @@ class SocialVoiceSessionServiceTest {
         public OptionalLong findUserIdBySessionId(long sessionId) {
             Long userId = owners.get(sessionId);
             return userId == null ? OptionalLong.empty() : OptionalLong.of(userId);
+        }
+    }
+
+    static class FakeOpenAiSpeechClient extends OpenAiSpeechClient {
+
+        String lastInput;
+
+        FakeOpenAiSpeechClient() {
+            super(
+                    new OpenAiProperties("test", 1000, null, null, null),
+                    new OpenAiSpeechProperties(null, "gpt-4o-mini-tts", "marin", "mp3", null),
+                    new ObjectMapper()
+            );
+        }
+
+        @Override
+        public byte[] createSpeech(String input) {
+            lastInput = input;
+            return "audio".getBytes();
+        }
+    }
+
+    static class FakeAudioAssetRepository extends SocialOpeningAudioAssetRepository {
+
+        Map<String, SocialOpeningAudioAsset> assets = new HashMap<>();
+
+        FakeAudioAssetRepository() {
+            super(null);
+        }
+
+        @Override
+        public Optional<SocialOpeningAudioAsset> findByCacheKey(String cacheKey) {
+            return Optional.ofNullable(assets.get(cacheKey));
+        }
+
+        @Override
+        public void save(SocialOpeningAudioAsset asset) {
+            assets.put(asset.cacheKey(), asset);
         }
     }
 }

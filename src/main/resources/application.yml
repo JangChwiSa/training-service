@@ -49,6 +49,12 @@ training:
       input-audio-format: ${OPENAI_REALTIME_INPUT_AUDIO_FORMAT:audio/pcm}
       input-audio-rate: ${OPENAI_REALTIME_INPUT_AUDIO_RATE:24000}
       output-audio-format: ${OPENAI_REALTIME_OUTPUT_AUDIO_FORMAT:audio/pcm}
+    speech:
+      url: ${OPENAI_SPEECH_URL:https://api.openai.com/v1/audio/speech}
+      model: ${OPENAI_SPEECH_MODEL:gpt-4o-mini-tts}
+      voice: ${OPENAI_SPEECH_VOICE:marin}
+      response-format: ${OPENAI_SPEECH_RESPONSE_FORMAT:mp3}
+      instructions: ${OPENAI_SPEECH_INSTRUCTIONS:Speak Korean naturally as a busy workplace senior giving a short instruction. Keep it clear and realistic.}
   outbox:
     publisher:
       enabled: ${OUTBOX_PUBLISHER_ENABLED:false}

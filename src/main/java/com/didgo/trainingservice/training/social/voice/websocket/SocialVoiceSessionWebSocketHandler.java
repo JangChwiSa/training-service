@@ -38,6 +38,9 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
     private static final String AUDIO_CHUNK_COUNTER_ATTRIBUTE = "audioChunkCounter";
     private static final String OUTPUT_AUDIO_CHUNK_COUNTER_ATTRIBUTE = "outputAudioChunkCounter";
     private static final String USER_TURN_READY_ATTRIBUTE = "userTurnReady";
+    private static final String UPSTREAM_AUDIO_COMMITTED_ATTRIBUTE = "upstreamAudioCommitted";
+    private static final String PENDING_RESPONSE_REQUEST_ATTRIBUTE = "pendingResponseRequest";
+    private static final String UPSTREAM_RESPONSE_DONE_ATTRIBUTE = "upstreamResponseDone";
 
     private final ObjectMapper objectMapper;
     private final RealtimeUpstreamClientFactory upstreamClientFactory;
@@ -80,6 +83,7 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
             upstream(session).send(objectMapper.writeValueAsString(Map.of("type", "input_audio_buffer.commit")));
             session.getAttributes().put(AUDIO_BUFFERED_ATTRIBUTE, false);
             session.getAttributes().put(USER_TURN_READY_ATTRIBUTE, true);
+            session.getAttributes().put(UPSTREAM_AUDIO_COMMITTED_ATTRIBUTE, false);
             log.info("Social voice audio committed. sessionId={}", token.sessionId());
             return;
         }
@@ -94,9 +98,12 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
                 ));
                 return;
             }
-            upstream(session).send(responseCreate(token));
-            session.getAttributes().put(USER_TURN_READY_ATTRIBUTE, false);
-            log.info("Social voice response requested. sessionId={}", token.sessionId());
+            if (!upstreamAudioCommitted(session)) {
+                session.getAttributes().put(PENDING_RESPONSE_REQUEST_ATTRIBUTE, true);
+                log.info("Social voice response request queued until upstream commit. sessionId={}", token.sessionId());
+                return;
+            }
+            requestUpstreamResponse(session, token);
             return;
         }
         if (TYPE_SESSION_FINISH.equals(type)) {
@@ -150,6 +157,9 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
         session.getAttributes().put(OUTPUT_AUDIO_CHUNK_COUNTER_ATTRIBUTE, new AtomicInteger(0));
         session.getAttributes().put(AUDIO_BUFFERED_ATTRIBUTE, false);
         session.getAttributes().put(USER_TURN_READY_ATTRIBUTE, false);
+        session.getAttributes().put(UPSTREAM_AUDIO_COMMITTED_ATTRIBUTE, false);
+        session.getAttributes().put(PENDING_RESPONSE_REQUEST_ATTRIBUTE, false);
+        session.getAttributes().put(UPSTREAM_RESPONSE_DONE_ATTRIBUTE, false);
         upstream.send(sessionUpdate(token));
         log.info("Social voice realtime session started. sessionId={}", token.sessionId());
 
@@ -194,6 +204,7 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
                 "audio", chunkBase64
         )));
         session.getAttributes().put(AUDIO_BUFFERED_ATTRIBUTE, true);
+        session.getAttributes().put(UPSTREAM_AUDIO_COMMITTED_ATTRIBUTE, false);
         int chunkCount = ((AtomicInteger) session.getAttributes().get(AUDIO_CHUNK_COUNTER_ATTRIBUTE)).incrementAndGet();
         if (chunkCount == 1 || chunkCount % 25 == 0) {
             log.info("Social voice audio chunk relayed. sessionId={}, chunkCount={}, bytesBase64={}",
@@ -203,6 +214,15 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        Object tokenAttribute = session.getAttributes().get(SocialVoiceSessionHandshakeInterceptor.TOKEN_ATTRIBUTE);
+        if (tokenAttribute instanceof SocialVoiceSessionToken token) {
+            log.info("Social voice browser websocket closed. sessionId={}, statusCode={}, reason={}",
+                    token.sessionId(), status.getCode(), status.getReason());
+        } else {
+            log.info("Social voice browser websocket closed before token resolution. statusCode={}, reason={}",
+                    status.getCode(), status.getReason());
+        }
+
         Object upstream = session.getAttributes().get(UPSTREAM_ATTRIBUTE);
         if (upstream instanceof RealtimeUpstreamClient upstreamClient) {
             upstreamClient.close();
@@ -242,6 +262,10 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
                 "rate", realtimeProperties.inputAudioRate()
         ));
         input.put("turn_detection", null);
+        input.put("transcription", Map.of(
+                "model", "gpt-4o-mini-transcribe",
+                "language", "ko"
+        ));
 
         Map<String, Object> audio = new LinkedHashMap<>();
         audio.put("input", input);
@@ -292,8 +316,13 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
                 - Do not explain what the user should do.
                 - Do not give strategy, feedback, or example answers unless the user explicitly asks to stop roleplay.
                 - Speak to the user as the real counterpart in the scene, such as a boss, coworker, customer, or interviewer.
+                - If the scenario involves a senior coworker, supervisor, boss, or a person giving work instructions, act as that senior workplace person, not as a peer helper.
+                - In this scene, you are the person who gave or owns the opening request. Maintain that authority and practical workplace concern.
                 - Keep replies short, natural, and conversational, usually 1 to 3 sentences.
                 - If the user asks a clarification question, answer it in character based on the scenario.
+                - If the user refuses, avoids the task, or says they do not want to do it, do not solve the task for them.
+                - For refusal or avoidance, respond like the senior workplace counterpart: acknowledge briefly, state why the task is needed now, and ask what part is difficult or what information they need.
+                - Do not say what "we" or "I" should do as an alternative plan unless the counterpart in the scene would realistically take over the task.
                 - The browser already played an opening narration for the practice, so do not repeat the narration or mention that this is practice.
                 - If the user says something vague, respond as the counterpart in this scene, not as a generic assistant greeting.
                 """.formatted(token.scenarioContext(), token.openingScript());
@@ -305,6 +334,22 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
 
     private boolean userTurnReady(WebSocketSession session) {
         return Boolean.TRUE.equals(session.getAttributes().get(USER_TURN_READY_ATTRIBUTE));
+    }
+
+    private boolean upstreamAudioCommitted(WebSocketSession session) {
+        return Boolean.TRUE.equals(session.getAttributes().get(UPSTREAM_AUDIO_COMMITTED_ATTRIBUTE));
+    }
+
+    private boolean pendingResponseRequest(WebSocketSession session) {
+        return Boolean.TRUE.equals(session.getAttributes().get(PENDING_RESPONSE_REQUEST_ATTRIBUTE));
+    }
+
+    private void requestUpstreamResponse(WebSocketSession session, SocialVoiceSessionToken token) throws IOException {
+        upstream(session).send(responseCreate(token));
+        session.getAttributes().put(USER_TURN_READY_ATTRIBUTE, false);
+        session.getAttributes().put(PENDING_RESPONSE_REQUEST_ATTRIBUTE, false);
+        session.getAttributes().put(UPSTREAM_RESPONSE_DONE_ATTRIBUTE, false);
+        log.info("Social voice response requested. sessionId={}", token.sessionId());
     }
 
     private class BrowserRelayEventHandler implements RealtimeUpstreamEventHandler {
@@ -343,10 +388,27 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
         }
 
         @Override
-        public void onClose() {
-            log.info("Social voice realtime upstream closed. sessionId={}", token.sessionId());
+        public void onClose(int statusCode, String reason) {
+            log.info("Social voice realtime upstream closed. sessionId={}, statusCode={}, reason={}",
+                    token.sessionId(), statusCode, reason);
             try {
-                send(browserSession, Map.of("type", "session.completed", "sessionId", token.sessionId(), "status", "CLOSED"));
+                if (Boolean.TRUE.equals(browserSession.getAttributes().get(UPSTREAM_RESPONSE_DONE_ATTRIBUTE))) {
+                    send(browserSession, Map.of(
+                            "type", "session.completed",
+                            "sessionId", token.sessionId(),
+                            "status", "CLOSED"
+                    ));
+                    return;
+                }
+
+                send(browserSession, Map.of(
+                        "type", "error",
+                        "sessionId", token.sessionId(),
+                        "code", "REALTIME_PROVIDER_CLOSED",
+                        "message", "실시간 음성 연결이 종료되었습니다. 잠시 후 다시 시도해 주세요.",
+                        "providerStatusCode", statusCode,
+                        "providerReason", reason == null ? "" : reason
+                ));
             } catch (IOException ignored) {
             }
         }
@@ -355,11 +417,15 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
             String type = event.path("type").asText();
             switch (type) {
                 case "input_audio_buffer.committed" -> {
+                    browserSession.getAttributes().put(UPSTREAM_AUDIO_COMMITTED_ATTRIBUTE, true);
                     browserSession.getAttributes().put(USER_TURN_READY_ATTRIBUTE, true);
                     send(browserSession, Map.of(
                             "type", "upstream.input_audio_buffer.committed",
                             "sessionId", token.sessionId()
                     ));
+                    if (pendingResponseRequest(browserSession)) {
+                        requestUpstreamResponse(browserSession, token);
+                    }
                 }
                 case "response.created" -> send(browserSession, Map.of(
                         "type", "upstream.response.created",
@@ -400,8 +466,23 @@ public class SocialVoiceSessionWebSocketHandler extends TextWebSocketHandler {
                         "speaker", "AI",
                         "finalText", extractOutputText(event)
                 ));
+                case "conversation.item.input_audio_transcription.completed" -> send(browserSession, Map.of(
+                        "type", "transcript.complete",
+                        "sessionId", token.sessionId(),
+                        "speaker", "USER",
+                        "turnNo", currentTurn(),
+                        "finalText", event.path("transcript").asText("")
+                ));
+                case "conversation.item.input_audio_transcription.delta" -> send(browserSession, Map.of(
+                        "type", "transcript.partial",
+                        "sessionId", token.sessionId(),
+                        "speaker", "USER",
+                        "turnNo", currentTurn(),
+                        "text", event.path("delta").asText("")
+                ));
                 case "response.done" -> {
                     String finalText = extractResponseDoneText(event);
+                    browserSession.getAttributes().put(UPSTREAM_RESPONSE_DONE_ATTRIBUTE, true);
                     send(browserSession, Map.of(
                             "type", "upstream.response.done",
                             "sessionId", token.sessionId(),

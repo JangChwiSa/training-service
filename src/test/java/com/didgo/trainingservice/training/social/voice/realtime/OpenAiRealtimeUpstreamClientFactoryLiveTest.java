@@ -47,7 +47,7 @@ class OpenAiRealtimeUpstreamClientFactoryLiveTest {
             }
 
             @Override
-            public void onClose() {
+            public void onClose(int statusCode, String reason) {
             }
         });
 
@@ -100,7 +100,7 @@ class OpenAiRealtimeUpstreamClientFactoryLiveTest {
             }
 
             @Override
-            public void onClose() {
+            public void onClose(int statusCode, String reason) {
             }
         });
 

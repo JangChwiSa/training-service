@@ -6,5 +6,5 @@ public interface RealtimeUpstreamEventHandler {
 
     void onError(Throwable throwable);
 
-    void onClose();
+    void onClose(int statusCode, String reason);
 }

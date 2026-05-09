@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.springframework.stereotype.Component;
 
@@ -62,12 +63,12 @@ public class OpenAiRealtimeUpstreamClientFactory implements RealtimeUpstreamClie
 
         @Override
         public void send(String eventJson) {
-            webSocket.sendText(eventJson, true);
+            webSocket.sendText(eventJson, true).join();
         }
 
         @Override
         public void close() {
-            webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "client session closed");
+            webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "client session closed").join();
         }
     }
 
@@ -78,6 +79,12 @@ public class OpenAiRealtimeUpstreamClientFactory implements RealtimeUpstreamClie
 
         Listener(RealtimeUpstreamEventHandler eventHandler) {
             this.eventHandler = eventHandler;
+        }
+
+        @Override
+        public void onOpen(WebSocket webSocket) {
+            webSocket.request(1);
+            WebSocket.Listener.super.onOpen(webSocket);
         }
 
         @Override
@@ -98,8 +105,8 @@ public class OpenAiRealtimeUpstreamClientFactory implements RealtimeUpstreamClie
 
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-            eventHandler.onClose();
-            return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
+            eventHandler.onClose(statusCode, reason);
+            return CompletableFuture.completedFuture(null);
         }
     }
 }

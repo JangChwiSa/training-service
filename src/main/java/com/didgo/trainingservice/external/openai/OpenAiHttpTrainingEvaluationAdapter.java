@@ -103,8 +103,19 @@ public class OpenAiHttpTrainingEvaluationAdapter implements TrainingEvaluationAd
         return """
                 Evaluate a completed training session. Return only structured JSON.
                 Score must be an integer from 0 to 100.
+                Feedback must be written only in Korean.
                 Feedback must be concise and based only on the provided training logs and metrics.
                 Do not infer or include user identity.
+
+                For SOCIAL training, grade strictly as workplace social communication practice:
+                - 90-100: respectful, specific, and practical response that clarifies the task or communicates difficulty appropriately.
+                - 70-89: partially appropriate but missing some clarification, tone, or responsibility.
+                - 40-69: weak response that avoids the task, is too vague, or needs substantial improvement.
+                - 0-39: refusal, dismissive answer, inappropriate tone, or repeated avoidance without constructive clarification.
+                - If the user simply says they do not want to do the task, cap the score at 40 unless they later explains the difficulty or asks for needed information.
+                - If the user repeats refusal after the counterpart asks what is difficult, the score should usually be 30-40.
+
+                The summary and detailText fields must be Korean sentences suitable for showing directly to the learner.
                 """;
     }
 
