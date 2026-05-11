@@ -1236,7 +1236,51 @@ training_sessions.current_step 갱신
 }
 ```
 
-## 7.4 안전 훈련 완료
+## 7.4 안전 훈련 전개 장면 이동
+
+### POST /api/trainings/safety/sessions/{sessionId}/advance-scene
+
+선택지가 없는 이야기 전개 장면에서 다음 장면을 반환한다. 이 API는 선택 로그를 저장하지 않으며 점수 계산에 영향을 주지 않는다.
+
+### Request
+
+```json
+{
+  "sceneId": 1
+}
+```
+
+### DB 처리
+
+```text
+session_id가 현재 user_id의 세션인지 검증
+현재 safety_scenes.scene_id의 scenario_id, scene_order 조회
+같은 scenario_id에서 scene_order + 1인 safety_scenes 조회
+다음 scene_id의 safety_choices 조회
+training_sessions.current_step 갱신
+safety_action_logs는 저장하지 않음
+```
+
+### Response
+
+```json
+{
+  "completed": false,
+  "nextScene": {
+    "sceneId": 2,
+    "screenInfo": "상황이 이어지는 화면",
+    "situationText": "다음 이야기 전개가 표시됩니다.",
+    "questionText": "",
+    "imageUrl": "/trainings/safety/commute-safety/scenario-01/story-02.png",
+    "imageAlt": "다음 이야기 장면",
+    "choices": [],
+    "endScene": false
+  },
+  "result": null
+}
+```
+
+## 7.5 안전 훈련 완료
 
 ### POST /api/trainings/safety/sessions/{sessionId}/complete
 

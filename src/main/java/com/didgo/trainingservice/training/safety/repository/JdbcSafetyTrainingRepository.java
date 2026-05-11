@@ -95,6 +95,24 @@ public class JdbcSafetyTrainingRepository implements SafetyTrainingRepository {
     }
 
     @Override
+    public Optional<SafetySceneResponse> findNextScene(long sceneId, long scenarioId) {
+        String sql = """
+                SELECT next_scene.scene_id
+                FROM safety_scenes current_scene
+                JOIN safety_scenes next_scene
+                  ON next_scene.scenario_id = current_scene.scenario_id
+                 AND next_scene.scene_order = current_scene.scene_order + 1
+                WHERE current_scene.scene_id = ?
+                  AND current_scene.scenario_id = ?
+                """;
+        List<Long> sceneIds = jdbcTemplate.queryForList(sql, Long.class, sceneId, scenarioId);
+        if (sceneIds.isEmpty()) {
+            return Optional.empty();
+        }
+        return findScene(sceneIds.getFirst());
+    }
+
+    @Override
     public List<SafetyChoiceResponse> findChoices(long sceneId) {
         String sql = """
                 SELECT choice_id, choice_text

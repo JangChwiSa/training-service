@@ -115,6 +115,17 @@ public class SafetyTrainingService {
         );
     }
 
+    public NextSafetySceneResponse advanceScene(CurrentUser currentUser, long sessionId, long sceneId) {
+        sessionOwnershipValidator.validateOwner(sessionId, currentUser);
+
+        TrainingSession session = trainingSessionService.getSession(sessionId);
+        SafetySceneResponse nextScene = safetyTrainingRepository.findNextScene(sceneId, session.scenarioId())
+                .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Next safety scene was not found."));
+        trainingSessionService.advanceCurrentStep(sessionId, (int) nextScene.sceneId());
+
+        return new NextSafetySceneResponse(false, nextScene, null);
+    }
+
     @Transactional(readOnly = true)
     public SafetySessionDetailResponse getSessionDetail(CurrentUser currentUser, long sessionId) {
         sessionOwnershipValidator.validateOwner(sessionId, currentUser);

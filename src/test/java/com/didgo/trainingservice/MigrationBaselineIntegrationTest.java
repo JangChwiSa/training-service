@@ -56,6 +56,40 @@ class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
             assertThat(columnExists(connection, "document_questions", "correct_feedback")).isTrue();
             assertThat(contentTableUserIdColumnCount(connection)).isZero();
             assertThat(userIdForeignKeyCount(connection)).isZero();
+            assertThat(countValue(connection, """
+                    SELECT COUNT(*)
+                    FROM safety_scenarios
+                    WHERE seed_code IN (
+                        'SAFE-SEX-N01',
+                        'SAFE-SEX-N02',
+                        'SAFE-SEX-N03',
+                        'SAFE-SEX-N04',
+                        'SAFE-INF-N01',
+                        'SAFE-INF-N02',
+                        'SAFE-INF-N03',
+                        'SAFE-COM-N01',
+                        'SAFE-COM-N02',
+                        'SAFE-COM-N03',
+                        'SAFE-COM-N04'
+                    )
+                      AND is_active = true
+                    """)).isEqualTo(11);
+            assertThat(countValue(connection, """
+                    SELECT COUNT(*)
+                    FROM safety_scenes
+                    WHERE scene_id BETWEEN 1001 AND 1044
+                    """)).isEqualTo(44);
+            assertThat(countValue(connection, """
+                    SELECT COUNT(*)
+                    FROM safety_choices
+                    WHERE choice_id BETWEEN 10001 AND 10033
+                    """)).isEqualTo(33);
+            assertThat(countValue(connection, """
+                    SELECT COUNT(*)
+                    FROM safety_scenarios
+                    WHERE scenario_id IN (1, 2, 3)
+                      AND is_active = true
+                    """)).isZero();
         }
 
         MigrationInfo[] migrations = flyway.info().all();
@@ -127,6 +161,14 @@ class MigrationBaselineIntegrationTest extends AbstractMySqlIntegrationTest {
                   AND referenced_table_name IS NOT NULL
                 """;
 
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            resultSet.next();
+            return resultSet.getInt(1);
+        }
+    }
+
+    private int countValue(Connection connection, String sql) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             resultSet.next();

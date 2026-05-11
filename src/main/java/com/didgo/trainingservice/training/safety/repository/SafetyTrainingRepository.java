@@ -20,6 +20,8 @@ public interface SafetyTrainingRepository {
 
     Optional<SafetySceneResponse> findScene(long sceneId);
 
+    Optional<SafetySceneResponse> findNextScene(long sceneId, long scenarioId);
+
     List<SafetyChoiceResponse> findChoices(long sceneId);
 
     Optional<SafetyChoiceRow> findChoice(long sceneId, long choiceId);
