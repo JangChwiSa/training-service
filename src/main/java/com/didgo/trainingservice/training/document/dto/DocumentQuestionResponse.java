@@ -6,6 +6,8 @@ import java.util.List;
 public record DocumentQuestionResponse(
         @Schema(description = "Document question ID.", example = "1")
         long questionId,
+        @Schema(description = "Document display theme.", example = "ANNOUNCEMENT")
+        String theme,
         @Schema(description = "Document question title.")
         String title,
         @Schema(description = "Document text the user should read.")
@@ -24,6 +26,17 @@ public record DocumentQuestionResponse(
             String questionText,
             String questionType
     ) {
-        this(questionId, title, documentText, questionText, questionType, List.of());
+        this(questionId, "ANNOUNCEMENT", title, documentText, questionText, questionType, List.of());
+    }
+
+    public DocumentQuestionResponse(
+            long questionId,
+            String title,
+            String documentText,
+            String questionText,
+            String questionType,
+            List<DocumentQuestionChoiceResponse> choices
+    ) {
+        this(questionId, "ANNOUNCEMENT", title, documentText, questionText, questionType, choices);
     }
 }

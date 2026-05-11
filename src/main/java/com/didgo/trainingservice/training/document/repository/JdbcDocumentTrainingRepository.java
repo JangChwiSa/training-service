@@ -22,13 +22,14 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
     @Override
     public List<DocumentQuestionResponse> findActiveQuestions() {
         String sql = """
-                SELECT question_id, title, document_text, question_text, question_type
+                SELECT question_id, theme, title, document_text, question_text, question_type
                 FROM document_questions
                 WHERE is_active = true
                 ORDER BY question_id ASC
                 """;
         return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionResponse(
                 resultSet.getLong("question_id"),
+                resultSet.getString("theme"),
                 resultSet.getString("title"),
                 resultSet.getString("document_text"),
                 resultSet.getString("question_text"),
@@ -40,7 +41,7 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
     @Override
     public List<DocumentQuestionResponse> findRandomActiveQuestionsByDifficulty(String difficulty, int limit) {
         String sql = """
-                SELECT question_id, title, document_text, question_text, question_type
+                SELECT question_id, theme, title, document_text, question_text, question_type
                 FROM document_questions
                 WHERE difficulty = ?
                   AND is_active = true
@@ -49,6 +50,7 @@ public class JdbcDocumentTrainingRepository implements DocumentTrainingRepositor
                 """;
         return jdbcTemplate.query(sql, (resultSet, rowNumber) -> new DocumentQuestionResponse(
                 resultSet.getLong("question_id"),
+                resultSet.getString("theme"),
                 resultSet.getString("title"),
                 resultSet.getString("document_text"),
                 resultSet.getString("question_text"),
