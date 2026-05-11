@@ -102,6 +102,57 @@ class SafetyTrainingServiceTest {
     }
 
     @Test
+    void advancesNarrativeSceneWithoutSavingActionLog() {
+        ownershipRepository.save(20L, 1L);
+        sessionRepository.sessions.put(20L, TrainingSession.start(
+                1L,
+                TrainingType.SAFETY,
+                null,
+                1L,
+                java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(20L));
+        safetyRepository.nextScenes.put(1L, scene(2L, false, List.of()));
+
+        NextSafetySceneResponse response = service.advanceScene(new CurrentUser(1L), 20L, 1L);
+
+        assertThat(response.completed()).isFalse();
+        assertThat(response.result()).isNull();
+        assertThat(response.nextScene().sceneId()).isEqualTo(2L);
+        assertThat(response.nextScene().choices()).isEmpty();
+        assertThat(safetyRepository.savedActionLogs).isEmpty();
+        assertThat(sessionRepository.sessions.get(20L).currentStep()).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsAnotherUsersAdvanceSceneRequest() {
+        ownershipRepository.save(20L, 2L);
+
+        assertThatThrownBy(() -> service.advanceScene(new CurrentUser(1L), 20L, 1L))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+                    assertThat(exception.getMessage()).isEqualTo("Training session belongs to another user.");
+                });
+    }
+
+    @Test
+    void returnsNotFoundWhenAdvancingPastLastNarrativeScene() {
+        ownershipRepository.save(20L, 1L);
+        sessionRepository.sessions.put(20L, TrainingSession.start(
+                1L,
+                TrainingType.SAFETY,
+                null,
+                1L,
+                java.time.LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(20L));
+
+        assertThatThrownBy(() -> service.advanceScene(new CurrentUser(1L), 20L, 1L))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.NOT_FOUND);
+                    assertThat(exception.getMessage()).isEqualTo("Next safety scene was not found.");
+                });
+    }
+
+    @Test
     void returnsCompletionResultWhenNextSceneIsEndScene() {
         ownershipRepository.save(20L, 1L);
         sessionRepository.sessions.put(20L, TrainingSession.start(
@@ -163,6 +214,10 @@ class SafetyTrainingServiceTest {
     }
 
     private SafetySceneResponse scene(long sceneId, boolean endScene) {
+        return scene(sceneId, endScene, List.of(new SafetyChoiceResponse(2L, "Report it to the manager.")));
+    }
+
+    private SafetySceneResponse scene(long sceneId, boolean endScene, List<SafetyChoiceResponse> choices) {
         return new SafetySceneResponse(
                 sceneId,
                 "screen",
@@ -170,7 +225,7 @@ class SafetyTrainingServiceTest {
                 "question",
                 "/scene.png",
                 "Scene alt",
-                List.of(new SafetyChoiceResponse(2L, "Report it to the manager.")),
+                choices,
                 endScene
         );
     }
@@ -180,6 +235,7 @@ class SafetyTrainingServiceTest {
         List<Long> activeScenarioIds = new ArrayList<>();
         Map<Long, SafetySceneResponse> firstScenes = new HashMap<>();
         Map<Long, SafetySceneResponse> scenes = new HashMap<>();
+        Map<Long, SafetySceneResponse> nextScenes = new HashMap<>();
         Map<String, SafetyChoiceRow> choices = new HashMap<>();
         List<SafetyActionLogResponse> savedActionLogs = new ArrayList<>();
         Optional<SafetyScoreRow> score = Optional.empty();
@@ -204,6 +260,11 @@ class SafetyTrainingServiceTest {
         @Override
         public Optional<SafetySceneResponse> findScene(long sceneId) {
             return Optional.ofNullable(scenes.get(sceneId));
+        }
+
+        @Override
+        public Optional<SafetySceneResponse> findNextScene(long sceneId, long scenarioId) {
+            return Optional.ofNullable(nextScenes.get(sceneId));
         }
 
         @Override

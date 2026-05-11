@@ -5,6 +5,7 @@ import com.didgo.trainingservice.common.exception.TrainingServiceException;
 import com.didgo.trainingservice.common.response.ApiResponse;
 import com.didgo.trainingservice.common.security.AuthenticatedUser;
 import com.didgo.trainingservice.common.security.CurrentUser;
+import com.didgo.trainingservice.training.safety.dto.AdvanceSafetySceneRequest;
 import com.didgo.trainingservice.training.safety.dto.CompleteSafetySessionResponse;
 import com.didgo.trainingservice.training.safety.dto.NextSafetySceneRequest;
 import com.didgo.trainingservice.training.safety.dto.NextSafetySceneResponse;
@@ -76,6 +77,20 @@ public class SafetyTrainingController {
                 request.sceneId(),
                 request.choiceId()
         ));
+    }
+
+    @Operation(
+            summary = "Advance safety narrative scene",
+            description = "Returns the next safety scene without storing a choice log. Use this for narrative scenes with no choices."
+    )
+    @PostMapping("/api/trainings/safety/sessions/{sessionId}/advance-scene")
+    public ApiResponse<NextSafetySceneResponse> advanceScene(
+            @AuthenticatedUser CurrentUser currentUser,
+            @Parameter(description = "Safety session ID.", example = "20")
+            @PathVariable long sessionId,
+            @Valid @RequestBody AdvanceSafetySceneRequest request
+    ) {
+        return ApiResponse.success(safetyTrainingService.advanceScene(currentUser, sessionId, request.sceneId()));
     }
 
     @Operation(

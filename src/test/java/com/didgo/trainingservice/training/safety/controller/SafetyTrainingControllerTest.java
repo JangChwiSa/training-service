@@ -133,6 +133,31 @@ class SafetyTrainingControllerTest {
     }
 
     @Test
+    void advancesNarrativeSceneWithoutChoiceLog() throws Exception {
+        ownershipRepository.save(20L, 1L);
+        sessionRepository.sessions.put(20L, TrainingSession.start(
+                1L,
+                TrainingType.SAFETY,
+                null,
+                1L,
+                LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(20L));
+        safetyRepository.nextScenes.put(1L, scene(2L, false, List.of()));
+
+        mockMvc.perform(post("/api/trainings/safety/sessions/20/advance-scene")
+                        .header("X-User-Id", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sceneId\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.completed").value(false))
+                .andExpect(jsonPath("$.data.nextScene.sceneId").value(2))
+                .andExpect(jsonPath("$.data.nextScene.choices.length()").value(0))
+                .andExpect(jsonPath("$.data.result").value(Matchers.nullValue()));
+
+        org.assertj.core.api.Assertions.assertThat(safetyRepository.savedActionLogs).isEmpty();
+    }
+
+    @Test
     void returnsResultWhenAdvancingToEndScene() throws Exception {
         ownershipRepository.save(20L, 1L);
         sessionRepository.sessions.put(20L, TrainingSession.start(
@@ -230,6 +255,10 @@ class SafetyTrainingControllerTest {
     }
 
     private SafetySceneResponse scene(long sceneId, boolean endScene) {
+        return scene(sceneId, endScene, List.of(new SafetyChoiceResponse(2L, "Report it to the manager.")));
+    }
+
+    private SafetySceneResponse scene(long sceneId, boolean endScene, List<SafetyChoiceResponse> choices) {
         return new SafetySceneResponse(
                 sceneId,
                 "screen",
@@ -237,7 +266,7 @@ class SafetyTrainingControllerTest {
                 "question",
                 "/scene.png",
                 "Scene alt",
-                List.of(new SafetyChoiceResponse(2L, "Report it to the manager.")),
+                choices,
                 endScene
         );
     }
@@ -247,6 +276,7 @@ class SafetyTrainingControllerTest {
         List<Long> activeScenarioIds = new ArrayList<>();
         Map<Long, SafetySceneResponse> firstScenes = new HashMap<>();
         Map<Long, SafetySceneResponse> scenes = new HashMap<>();
+        Map<Long, SafetySceneResponse> nextScenes = new HashMap<>();
         Map<String, SafetyChoiceRow> choices = new HashMap<>();
         List<SafetyActionLogResponse> savedActionLogs = new ArrayList<>();
         Optional<SafetyScoreRow> score = Optional.empty();
@@ -273,6 +303,11 @@ class SafetyTrainingControllerTest {
         @Override
         public Optional<SafetySceneResponse> findScene(long sceneId) {
             return Optional.ofNullable(scenes.get(sceneId));
+        }
+
+        @Override
+        public Optional<SafetySceneResponse> findNextScene(long sceneId, long scenarioId) {
+            return Optional.ofNullable(nextScenes.get(sceneId));
         }
 
         @Override
