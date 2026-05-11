@@ -163,15 +163,15 @@ public class FocusTrainingService {
                 new TrainingCompletionFeedback(
                         "SUMMARY",
                         "SYSTEM",
-                        "吏묒쨷???덈젴???꾨즺?덉뒿?덈떎.",
-                        "諛섏쓳 ?뺥솗?꾩? ?됯퇏 諛섏쓳 ?쒓컙??湲곗??쇰줈 ?먯닔瑜?怨꾩궛?덉뒿?덈떎."
+                        "집중력 훈련이 완료되었습니다.",
+                        "명령에 대한 반응 정확도와 평균 반응 시간을 기준으로 점수를 계산했습니다."
                 ),
                 new TrainingCompletionSummary(
                         null,
                         null,
                         null,
-                        "吏묒쨷??" + level + "?④퀎",
-                        "吏묒쨷???덈젴 ?꾨즺",
+                        "집중력 " + level + "단계",
+                        "집중력 훈련 완료",
                         correctCount,
                         totalCount,
                         accuracyRate,

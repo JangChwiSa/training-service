@@ -1,10 +1,10 @@
 package com.didgo.trainingservice.training.social.service;
 
-import com.didgo.trainingservice.external.openai.dto.TrainingEvaluationLog;
-import com.didgo.trainingservice.external.openai.dto.TrainingEvaluationStorageModel;
 import com.didgo.trainingservice.common.exception.ErrorCode;
 import com.didgo.trainingservice.common.exception.TrainingServiceException;
 import com.didgo.trainingservice.common.security.CurrentUser;
+import com.didgo.trainingservice.external.openai.dto.TrainingEvaluationLog;
+import com.didgo.trainingservice.external.openai.dto.TrainingEvaluationStorageModel;
 import com.didgo.trainingservice.training.completion.TrainingCompletionCommand;
 import com.didgo.trainingservice.training.completion.TrainingCompletionFeedback;
 import com.didgo.trainingservice.training.completion.TrainingCompletionProgress;
@@ -27,6 +27,7 @@ import com.didgo.trainingservice.training.social.dto.SocialScenarioDetailRespons
 import com.didgo.trainingservice.training.social.dto.SocialScenarioListItemResponse;
 import com.didgo.trainingservice.training.social.dto.SocialSessionDetailResponse;
 import com.didgo.trainingservice.training.social.dto.StartSocialSessionResponse;
+import com.didgo.trainingservice.training.social.entity.SocialDialogSpeaker;
 import com.didgo.trainingservice.training.social.entity.SocialJobType;
 import com.didgo.trainingservice.training.social.repository.SocialTrainingRepository;
 import com.didgo.trainingservice.training.social.repository.SocialTrainingRepository.SocialScenarioSummaryRow;
@@ -124,6 +125,7 @@ public class SocialTrainingService {
     ) {
         ensureCompletionDependencies();
         sessionOwnershipValidator.validateOwner(sessionId, currentUser);
+        validateEvaluableDialogLogs(request);
         SocialScenarioSummaryRow scenario = socialTrainingRepository.findScenarioSummaryBySessionId(sessionId)
                 .orElseThrow(() -> new TrainingServiceException(ErrorCode.NOT_FOUND, "Social scenario was not found."));
         TrainingEvaluationStorageModel evaluation = trainingEvaluationService.evaluate(new TrainingEvaluationCommand(
@@ -178,6 +180,17 @@ public class SocialTrainingService {
         ));
 
         return new CompleteSocialSessionResponse(result.sessionId(), result.score(), result.feedbackSummary(), true);
+    }
+
+    private void validateEvaluableDialogLogs(CompleteSocialSessionRequest request) {
+        boolean hasUserUtterance = request.dialogLogs().stream()
+                .anyMatch(log -> log.speaker() == SocialDialogSpeaker.USER
+                        && log.content() != null
+                        && !log.content().isBlank());
+
+        if (!hasUserUtterance) {
+            throw new TrainingServiceException(ErrorCode.VALIDATION_ERROR, "사용자 대화가 없어 피드백을 생성할 수 없습니다.");
+        }
     }
 
     private void ensureCompletionDependencies() {

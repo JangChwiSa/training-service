@@ -153,6 +153,36 @@ class SocialTrainingServiceTest {
     }
 
     @Test
+    void rejectsCompletionWithoutUserDialogBeforeEvaluationRuns() {
+        RecordingTrainingEvaluationAdapter adapter = new RecordingTrainingEvaluationAdapter();
+        SocialTrainingService completionEnabledService = completionEnabledService(adapter);
+        ownershipRepository.save(30L, 1L);
+        sessionRepository.sessions.put(30L, TrainingSession.start(
+                1L,
+                TrainingType.SOCIAL,
+                "OFFICE",
+                1L,
+                LocalDateTime.of(2026, 4, 28, 10, 0)
+        ).withSessionId(30L));
+        socialRepository.scenarioSummary = Optional.of(new SocialTrainingRepository.SocialScenarioSummaryRow(1L, "Office conversation"));
+
+        assertThatThrownBy(() -> completionEnabledService.completeSession(
+                new CurrentUser(1L),
+                30L,
+                new CompleteSocialSessionRequest(List.of(
+                        new SocialDialogLogRequest(1, SocialDialogSpeaker.AI, "How can I help?")
+                ))
+        ))
+                .isInstanceOfSatisfying(TrainingServiceException.class, exception -> {
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getMessage()).isEqualTo("사용자 대화가 없어 피드백을 생성할 수 없습니다.");
+                });
+
+        assertThat(adapter.calls).isZero();
+        assertThat(socialRepository.savedDialogLogs).isEmpty();
+    }
+
+    @Test
     void completesWithFallbackFeedbackWhenOpenAiEvaluationFails() {
         RecordingTrainingEvaluationAdapter adapter = new RecordingTrainingEvaluationAdapter();
         adapter.failure = new OpenAiAdapterException("temporary 5xx");

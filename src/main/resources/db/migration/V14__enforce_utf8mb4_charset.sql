@@ -1,0 +1,25 @@
+/*!40100 ALTER DATABASE training_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+
+/*!40100 ALTER TABLE document_answer_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE document_question_choices CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE document_questions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE document_session_questions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE focus_commands CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE focus_level_rules CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE focus_reaction_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE outbox_events CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE safety_action_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE safety_choices CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE safety_scenarios CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE safety_scenes CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE social_dialog_logs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE social_opening_audio_assets CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE social_scenarios CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE training_feedbacks CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE training_scores CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE training_session_summaries CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE training_sessions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE user_document_progress CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE user_focus_progress CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE user_safety_progress CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+/*!40100 ALTER TABLE user_social_progress CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;

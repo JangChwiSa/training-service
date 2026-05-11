@@ -3,13 +3,17 @@ package com.didgo.trainingservice.training.document.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record DocumentAnswerResultResponse(
-        @Schema(description = "梨꾩젏??臾몄꽌 臾몄젣 ID?낅땲??", example = "1")
+        @Schema(description = "Document question ID.", example = "1")
         long questionId,
-        @Schema(description = "?ъ슜???듬????뺣떟?몄? ?щ??낅땲??", example = "true")
+        @Schema(description = "Question text shown to the learner.")
+        String questionText,
+        @Schema(description = "Answer submitted by the learner.")
+        String userAnswer,
+        @Schema(description = "Whether the submitted answer is correct.", example = "true")
         boolean correct,
-        @Schema(description = "臾몄젣???뺣떟?낅땲??")
+        @Schema(description = "Correct answer.")
         String correctAnswer,
-        @Schema(description = "?뺣떟 ?먮떒??????댁꽕?낅땲??")
+        @Schema(description = "Explanation for the correct answer.")
         String explanation
 ) {
 }

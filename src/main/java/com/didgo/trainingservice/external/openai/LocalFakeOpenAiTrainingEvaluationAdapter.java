@@ -66,7 +66,7 @@ public class LocalFakeOpenAiTrainingEvaluationAdapter implements TrainingEvaluat
         return normalized.contains("하기싫")
                 || normalized.contains("안할")
                 || normalized.contains("못하겠")
-                || normalized.contains("싫어요")
+                || normalized.contains("싫어")
                 || normalized.contains("싫다");
     }
 
@@ -75,17 +75,17 @@ public class LocalFakeOpenAiTrainingEvaluationAdapter implements TrainingEvaluat
             return false;
         }
         String normalized = content.replace(" ", "");
-        return normalized.contains("몇장")
+        return normalized.contains("먼저")
                 || normalized.contains("확인")
                 || normalized.contains("알려")
-                || normalized.contains("어려운")
-                || normalized.contains("도와");
+                || normalized.contains("어려움")
+                || normalized.contains("지원");
     }
 
     private String summary(TrainingEvaluationRequest request, int score) {
         if (request.trainingType() == TrainingType.SOCIAL) {
             return score < 60
-                    ? "업무 상황에 맞는 사회적 대응이 부족했습니다."
+                    ? "업무 상황에 맞는 사회적 대화 응답이 부족했습니다."
                     : "상황을 이해하고 대화를 이어가려는 시도가 있었습니다.";
         }
         return request.trainingType().name() + " 훈련 평가가 완료되었습니다.";
@@ -93,7 +93,7 @@ public class LocalFakeOpenAiTrainingEvaluationAdapter implements TrainingEvaluat
 
     private String detail(TrainingEvaluationRequest request, int score) {
         if (request.trainingType() == TrainingType.SOCIAL && score < 60) {
-            return "사수의 업무 요청에 대해 단순히 거절하는 답변이 반복되었습니다. 사회성 훈련에서는 하기 싫다는 표현보다, 필요한 정보가 무엇인지 묻거나 어려운 점을 차분히 설명하는 응답이 필요합니다.";
+            return "사수의 업무 요청에 단순히 거절하는 응답이 반복되었습니다. 사회성 훈련에서는 하기 싫다는 표현보다, 필요한 정보가 무엇인지 묻거나 어려운 점을 차분히 설명하는 응답이 필요합니다.";
         }
         return "훈련 로그와 응답 흐름을 기준으로 평가했습니다. 제한 시간은 "
                 + properties.timeoutMs()

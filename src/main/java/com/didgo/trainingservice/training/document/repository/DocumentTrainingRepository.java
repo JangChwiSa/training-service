@@ -72,6 +72,7 @@ public interface DocumentTrainingRepository {
 
     record ScoredDocumentAnswer(
             long questionId,
+            String questionText,
             String userAnswer,
             String correctAnswer,
             boolean correct,
@@ -96,6 +97,7 @@ public interface DocumentTrainingRepository {
                 boolean correct = request.choiceId().equals(question.correctChoiceId());
                 return new ScoredDocumentAnswer(
                         request.questionId(),
+                        question.questionText(),
                         selectedChoiceText,
                         question.correctAnswer(),
                         correct,
@@ -111,6 +113,7 @@ public interface DocumentTrainingRepository {
             boolean correct = question.correctAnswer().trim().equalsIgnoreCase(request.userAnswer().trim());
             return new ScoredDocumentAnswer(
                     request.questionId(),
+                    question.questionText(),
                     request.userAnswer(),
                     question.correctAnswer(),
                     correct,

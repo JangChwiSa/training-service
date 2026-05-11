@@ -12,11 +12,11 @@ import com.didgo.trainingservice.training.completion.TrainingCompletionService;
 import com.didgo.trainingservice.training.completion.TrainingCompletionSummary;
 import com.didgo.trainingservice.training.safety.dto.CompleteSafetySessionResponse;
 import com.didgo.trainingservice.training.safety.dto.NextSafetySceneResponse;
+import com.didgo.trainingservice.training.safety.dto.SafetyChoiceSummaryResponse;
+import com.didgo.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.didgo.trainingservice.training.safety.dto.SafetyScenarioListItemResponse;
 import com.didgo.trainingservice.training.safety.dto.SafetySceneResponse;
 import com.didgo.trainingservice.training.safety.dto.SafetySelectedResultResponse;
-import com.didgo.trainingservice.training.safety.dto.SafetyChoiceSummaryResponse;
-import com.didgo.trainingservice.training.safety.dto.SafetyFeedbackResponse;
 import com.didgo.trainingservice.training.safety.dto.SafetySessionDetailResponse;
 import com.didgo.trainingservice.training.safety.dto.StartSafetySessionResponse;
 import com.didgo.trainingservice.training.safety.entity.SafetyCategory;
@@ -171,15 +171,15 @@ public class SafetyTrainingService {
                 new TrainingCompletionFeedback(
                         "SUMMARY",
                         "SYSTEM",
-                        "?덉쟾 ?덈젴???꾨즺?덉뒿?덈떎.",
-                        "?좏깮 寃곌낵瑜?湲곗??쇰줈 ?덉쟾 ?먮떒 ?먯닔瑜?怨꾩궛?덉뒿?덈떎."
+                        "안전 훈련이 완료되었습니다.",
+                        "선택한 행동의 정답 여부를 기준으로 안전 훈련 점수를 계산했습니다."
                 ),
                 new TrainingCompletionSummary(
                         scenario.scenarioId(),
                         scenario.title(),
                         scenario.category().name(),
                         scenario.title(),
-                        "?덉쟾 ?덈젴 ?꾨즺",
+                        "안전 훈련 완료",
                         actionSummary.correctCount(),
                         actionSummary.totalCount(),
                         java.math.BigDecimal.valueOf(score),

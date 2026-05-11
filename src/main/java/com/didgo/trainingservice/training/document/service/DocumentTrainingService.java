@@ -20,8 +20,8 @@ import com.didgo.trainingservice.training.document.dto.StartDocumentSessionRespo
 import com.didgo.trainingservice.training.document.dto.SubmitDocumentAnswersRequest;
 import com.didgo.trainingservice.training.document.dto.SubmitDocumentAnswersResponse;
 import com.didgo.trainingservice.training.document.repository.DocumentTrainingRepository;
-import com.didgo.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentScoreRow;
 import com.didgo.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentQuestionAnswerRow;
+import com.didgo.trainingservice.training.document.repository.DocumentTrainingRepository.DocumentScoreRow;
 import com.didgo.trainingservice.training.document.repository.DocumentTrainingRepository.ScoredDocumentAnswer;
 import com.didgo.trainingservice.training.progress.dto.DocumentProgressResponse;
 import com.didgo.trainingservice.training.progress.repository.TrainingProgressRepository;
@@ -195,8 +195,8 @@ public class DocumentTrainingService {
                 new TrainingCompletionFeedback(
                         "SUMMARY",
                         "SYSTEM",
-                        "문서 이해 훈련을 완료했습니다.",
-                        "제출한 답변의 정답률을 기준으로 점수를 계산했습니다."
+                        "문서 이해 훈련이 완료되었습니다.",
+                        "제출한 답변의 정답 여부를 기준으로 점수를 계산했습니다."
                 ),
                 new TrainingCompletionSummary(
                         null,
@@ -218,6 +218,8 @@ public class DocumentTrainingService {
         List<DocumentAnswerResultResponse> results = scoredAnswers.stream()
                 .map(answer -> new DocumentAnswerResultResponse(
                         answer.questionId(),
+                        answer.questionText(),
+                        answer.userAnswer(),
                         answer.correct(),
                         answer.correctAnswer(),
                         answer.explanation()

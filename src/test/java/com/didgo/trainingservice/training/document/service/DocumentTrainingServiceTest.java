@@ -240,6 +240,11 @@ class DocumentTrainingServiceTest {
         assertThat(response.score()).isEqualTo(100);
         assertThat(response.correctCount()).isEqualTo(5);
         assertThat(response.totalCount()).isEqualTo(5);
+        assertThat(response.results()).hasSize(5);
+        assertThat(response.results().getFirst().questionText()).isEqualTo("Question 1");
+        assertThat(response.results().getFirst().userAnswer()).isEqualTo("Answer 1");
+        assertThat(response.results().getFirst().correctAnswer()).isEqualTo("Answer 1");
+        assertThat(response.results().getFirst().explanation()).isEqualTo("Explanation 1");
         assertThat(documentRepository.savedAnswers).hasSize(5);
         assertThat(scoreRepository.saved.scoreType()).isEqualTo("ACCURACY_RATE");
         assertThat(summaryRepository.saved.playedLevel()).isEqualTo(3);
@@ -270,6 +275,7 @@ class DocumentTrainingServiceTest {
         );
 
         assertThat(scoredAnswer.correct()).isTrue();
+        assertThat(scoredAnswer.questionText()).isEqualTo("Choose the correct answer.");
         assertThat(scoredAnswer.userAnswer()).isEqualTo("Correct choice");
         assertThat(scoredAnswer.correctAnswer()).isEqualTo("Correct choice");
     }
