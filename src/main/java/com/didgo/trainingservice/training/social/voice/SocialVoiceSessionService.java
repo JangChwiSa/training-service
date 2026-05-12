@@ -23,6 +23,8 @@ import com.didgo.trainingservice.training.social.voice.tts.SocialOpeningAudioAss
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -141,9 +143,12 @@ public class SocialVoiceSessionService {
     private String openingScript(SocialScenarioDetailResponse scenario) {
         String request = extractCounterpartRequest(scenario.situationText());
         if (request.isBlank()) {
-            request = scenarioContext(scenario);
+            request = extractCounterpartRequest(scenario.backgroundText());
         }
-        return request;
+        if (request.isBlank()) {
+            request = scenario.title();
+        }
+        return request == null ? "" : request.trim();
     }
 
     private OpeningVoiceResponse openingVoice(long scenarioId, String openingScript) {
@@ -200,24 +205,47 @@ public class SocialVoiceSessionService {
         }
 
         String value = text.trim();
-        String[] quotePairs = {"\"", "\"", "“", "”", "‘", "’", "'", "'"};
-        String extracted = "";
-        for (int index = 0; index < quotePairs.length; index += 2) {
-            String open = quotePairs[index];
-            String close = quotePairs[index + 1];
-            int start = value.indexOf(open);
-            while (start >= 0) {
-                int end = value.indexOf(close, start + open.length());
-                if (end < 0) {
-                    break;
-                }
-                String candidate = value.substring(start + open.length(), end).trim();
-                if (!candidate.isBlank()) {
-                    extracted = candidate;
-                }
-                start = value.indexOf(open, end + close.length());
+        String quoted = lastRegexGroup(value, "[\"“”'‘’]([^\"“”'‘’]{2,120})[\"“”'‘’]");
+        if (!quoted.isBlank()) {
+            return cleanOpeningRequest(quoted);
+        }
+
+        String reported = lastRegexGroup(
+                value,
+                "(?:^|[.!?。！？]\\s*)(?:[^.!?。！？]{0,30}?(?:이|가|은|는)\\s+)?(.{2,100}?)(?:라고|하고)\\s*(?:말|요청|부탁|지시|물)"
+        );
+        if (!reported.isBlank()) {
+            return cleanOpeningRequest(reported);
+        }
+
+        String requestSentence = lastRegexGroup(
+                value,
+                "([^.!?。！？]{2,120}?(?:주세요|부탁|요청|말했습니다|물었습니다)[^.!?。！？]*)[.!?。！？]?"
+        );
+        if (!requestSentence.isBlank()) {
+            return cleanOpeningRequest(requestSentence);
+        }
+
+        return "";
+    }
+
+    private String lastRegexGroup(String value, String regex) {
+        Matcher matcher = Pattern.compile(regex).matcher(value);
+        String result = "";
+        while (matcher.find()) {
+            String candidate = matcher.group(1);
+            if (candidate != null && !candidate.isBlank()) {
+                result = candidate.trim();
             }
         }
-        return extracted;
+        return result;
+    }
+
+    private String cleanOpeningRequest(String value) {
+        String cleaned = value.replaceAll("\\s+", " ").trim();
+        cleaned = cleaned.replaceAll("^(?:.*?)(?:선임|상사|동료|담당자|관리자|반장|고객|손님|직원)(?:이|가|은|는)?\\s+", "");
+        cleaned = cleaned.replaceAll("\\s*(?:라고|하고)\\s*(?:말|요청|부탁|지시|물).*$", "");
+        cleaned = cleaned.replaceAll("\\s*어떻게\\s*대답할까요\\??$", "");
+        return cleaned.trim();
     }
 }

@@ -7,8 +7,10 @@ import com.didgo.trainingservice.common.security.AuthenticatedUser;
 import com.didgo.trainingservice.common.security.CurrentUser;
 import com.didgo.trainingservice.training.social.dto.CompleteSocialSessionRequest;
 import com.didgo.trainingservice.training.social.dto.CompleteSocialSessionResponse;
+import com.didgo.trainingservice.training.social.dto.GenerateSocialAdaptiveScenarioRequest;
 import com.didgo.trainingservice.training.social.dto.SelectSocialJobTypeRequest;
 import com.didgo.trainingservice.training.social.dto.SelectSocialJobTypeResponse;
+import com.didgo.trainingservice.training.social.dto.SocialAdaptiveScenarioResponse;
 import com.didgo.trainingservice.training.social.dto.SocialScenarioDetailResponse;
 import com.didgo.trainingservice.training.social.dto.SocialScenarioListItemResponse;
 import com.didgo.trainingservice.training.social.dto.SocialSessionDetailResponse;
@@ -71,7 +73,22 @@ public class SocialTrainingController {
             @Parameter(description = "議고쉶???ы쉶???쒕굹由ъ삤 ID?낅땲??", example = "1")
             @PathVariable long scenarioId
     ) {
-        return ApiResponse.success(socialTrainingService.getScenarioDetail(scenarioId));
+        return ApiResponse.success(socialTrainingService.getScenarioDetail(currentUser, scenarioId));
+    }
+
+    @Operation(
+            summary = "Generate adaptive social scenario",
+            description = "Analyzes recent social training history and creates a user-specific scenario for weak-point practice."
+    )
+    @PostMapping("/api/trainings/social/adaptive-scenarios")
+    public ApiResponse<SocialAdaptiveScenarioResponse> generateAdaptiveScenario(
+            @AuthenticatedUser CurrentUser currentUser,
+            @Valid @RequestBody GenerateSocialAdaptiveScenarioRequest request
+    ) {
+        return ApiResponse.success(socialTrainingService.generateAdaptiveScenario(
+                currentUser,
+                parseJobType(request.jobType())
+        ));
     }
 
     @Operation(
